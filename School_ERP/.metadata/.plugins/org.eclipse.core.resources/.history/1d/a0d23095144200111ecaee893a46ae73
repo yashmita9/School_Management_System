@@ -1,0 +1,119 @@
+package com.erp.school.entity;
+
+import com.erp.school.common.BaseEntity;
+import com.erp.school.entityenum.BoardType;
+import com.erp.school.entityenum.Status;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "school")
+public class SchoolEntity extends BaseEntity {
+
+	@Column(name = "school_name", nullable = false, length = 100)
+	private String schoolName;
+
+	@Column(name = "email", length = 100)
+	private String email;
+
+	@Column(name = "phone", length = 15)
+	private String phone;
+
+	@Column(name = "address", length = 255)
+	private String address;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "board", length = 30)
+	private BoardType board;
+
+	@Column(name = "affiliation_no", length = 50)
+	private String affiliationNo;
+
+	@Column(name = "school_code", length = 50)
+	private String schoolCode;
+
+	@Column(name = "established_year")
+	private Integer establishedYear;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "status", length = 20)
+	private Status status;
+
+	// Getter Setter
+
+	public String getSchoolName() {
+		return schoolName;
+	}
+
+	public void setSchoolName(String schoolName) {
+		this.schoolName = schoolName;
+	}
+
+	public String getEmail() {
+		return email;
+	}
+
+	public void setEmail(String email) {
+		this.email = email;
+	}
+
+	public String getPhone() {
+		return phone;
+	}
+
+	public void setPhone(String phone) {
+		this.phone = phone;
+	}
+
+	public String getAddress() {
+		return address;
+	}
+
+	public void setAddress(String address) {
+		this.address = address;
+	}
+
+	public BoardType getBoard() {
+		return board;
+	}
+
+	public void setBoard(BoardType board) {
+		this.board = board;
+	}
+
+	public String getAffiliationNo() {
+		return affiliationNo;
+	}
+
+	public void setAffiliationNo(String affiliationNo) {
+		this.affiliationNo = affiliationNo;
+	}
+
+	public String getSchoolCode() {
+		return schoolCode;
+	}
+
+	public void setSchoolCode(String schoolCode) {
+		this.schoolCode = schoolCode;
+	}
+
+	public Integer getEstablishedYear() {
+		return establishedYear;
+	}
+
+	public void setEstablishedYear(Integer establishedYear) {
+		this.establishedYear = establishedYear;
+	}
+
+	public Status getStatus() {
+		return status;
+	}
+
+	public void setStatus(Status status) {
+		this.status = status;
+	}
+}

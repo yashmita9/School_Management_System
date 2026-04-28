@@ -1,0 +1,30 @@
+package com.erp.school.service;
+
+import java.util.List;
+
+import com.erp.school.dto.SubjectRequestDTO;
+import com.erp.school.dto.SubjectResponseDTO;
+import com.erp.school.entityenum.Status;
+
+/**
+ * Service interface for Subject module.
+ * Handles subject master operations.
+ * 
+ * @author Yashmita Rathore
+ */
+public interface SubjectServiceInt {
+
+	SubjectResponseDTO addSubject(SubjectRequestDTO dto);
+
+	SubjectResponseDTO updateSubject(Long id, SubjectRequestDTO dto);
+
+	SubjectResponseDTO getById(Long id);
+
+	List<SubjectResponseDTO> getAll();
+
+	List<SubjectResponseDTO> getAllActive();
+
+	void deleteSubject(Long id);
+
+	SubjectResponseDTO updateStatus(Long id, Status status);
+}

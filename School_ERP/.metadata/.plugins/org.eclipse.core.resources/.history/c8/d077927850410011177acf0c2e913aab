@@ -1,0 +1,32 @@
+package com.erp.school.service;
+
+import java.util.List;
+
+import org.springframework.data.domain.Page;
+
+import com.erp.school.common.BaseService;
+import com.erp.school.common.PageResponseDTO;
+import com.erp.school.dto.ChangeRequestDto;
+import com.erp.school.dto.UserRequestDTO;
+import com.erp.school.dto.UserResponseDTO;
+import com.erp.school.entity.UserEntity;
+import com.erp.school.entityenum.Status;
+import com.erp.school.entityenum.UserRole;
+
+public interface UserService extends BaseService<UserEntity, UserRequestDTO, UserResponseDTO> {
+
+
+
+	public void deleteUser(Long id);
+	
+	public List<UserResponseDTO> getAllUsers() ;
+	
+	void changePassword(ChangeRequestDto request);
+	
+	UserResponseDTO getProfile();
+	
+	public UserResponseDTO toggleStatus(Long id);
+
+	PageResponseDTO getUsers(int page, int size, String keyword, UserRole role, Status status);
+	
+}

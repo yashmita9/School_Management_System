@@ -1,0 +1,237 @@
+package com.erp.school.service.impl;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.erp.school.dto.StudentEnrollmentRequestDTO;
+import com.erp.school.dto.StudentEnrollmentResponseDTO;
+import com.erp.school.entity.AcademicYearEntity;
+import com.erp.school.entity.ClassEntity;
+import com.erp.school.entity.SectionEntity;
+import com.erp.school.entity.StudentEnrollmentEntity;
+import com.erp.school.entity.StudentEntity;
+import com.erp.school.exception.BadRequestException;
+import com.erp.school.exception.ResourceNotFoundException;
+import com.erp.school.repository.AcademicYearRepository;
+import com.erp.school.repository.ClassRepository;
+import com.erp.school.repository.SectionRepository;
+import com.erp.school.repository.StudentEnrollmentRepository;
+import com.erp.school.repository.StudentRepository;
+import com.erp.school.service.StudentEnrollmentServiceInt;
+
+import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Service class for Student Enrollment operations. Handles student class /
+ * section / academic year mapping.
+ *
+ * @author Yashmita Rathore
+ */
+@Service
+@Transactional
+public class StudentEnrollmentServiceImpl implements StudentEnrollmentServiceInt {
+
+	private static final Logger logger = LoggerFactory.getLogger(StudentEnrollmentServiceImpl.class);
+
+	@Autowired
+	private StudentEnrollmentRepository enrollmentRepository;
+
+	@Autowired
+	private StudentRepository studentRepository;
+
+	@Autowired
+	private AcademicYearRepository academicYearRepository;
+
+	@Autowired
+	private ClassRepository classRepository;
+
+	@Autowired
+	private SectionRepository sectionRepository;
+
+	@Autowired
+	private ModelMapper modelMapper;
+
+	/**
+	 * Assign student to class / section / academic year.
+	 *
+	 * @param dto request data
+	 * @return saved enrollment data
+	 */
+	@Override
+	public StudentEnrollmentResponseDTO assignStudent(StudentEnrollmentRequestDTO dto) {
+
+		logger.info("Request received to assign student ID: {}", dto.getStudentId());
+
+		StudentEntity student = studentRepository.findById(dto.getStudentId()).orElseThrow(() -> {
+			logger.error("Student not found with ID: {}", dto.getStudentId());
+			return new ResourceNotFoundException("Student not found");
+		});
+
+		// Current Academic Year Auto Fetch
+		AcademicYearEntity academicYear = academicYearRepository.findByCurrentYearTrue().orElseThrow(() -> {
+			logger.error("Current academic year not found");
+			return new ResourceNotFoundException("Current academic year not found");
+		});
+
+		ClassEntity classEntity = classRepository.findById(dto.getClassId()).orElseThrow(() -> {
+			logger.error("Class not found with ID: {}", dto.getClassId());
+			return new ResourceNotFoundException("Class not found");
+		});
+
+		SectionEntity sectionEntity = sectionRepository.findById(dto.getSectionId()).orElseThrow(() -> {
+			logger.error("Section not found with ID: {}", dto.getSectionId());
+			return new ResourceNotFoundException("Section not found");
+		});
+
+		// Duplicate Check: Same Student Same Academic Year
+		boolean exists = enrollmentRepository.existsByStudentIdAndAcademicYearId(dto.getStudentId(),
+				academicYear.getId());
+
+		if (exists) {
+			logger.error("Student already enrolled in current academic year");
+			throw new BadRequestException("Student already enrolled in current academic year");
+		}
+
+		// Old Current Enrollment False
+		enrollmentRepository.findByStudentIdAndIsCurrentTrue(dto.getStudentId()).ifPresent(oldEnrollment -> {
+			oldEnrollment.setIsCurrent(false);
+			enrollmentRepository.save(oldEnrollment);
+		});
+
+		StudentEnrollmentEntity enrollment = modelMapper.map(dto, StudentEnrollmentEntity.class);
+
+		enrollment.setStudent(student);
+		enrollment.setAcademicYear(academicYear);
+		enrollment.setClassEntity(classEntity);
+		enrollment.setSectionEntity(sectionEntity);
+		enrollment.setIsCurrent(true);
+
+		StudentEnrollmentEntity savedEnrollment = enrollmentRepository.save(enrollment);
+
+		logger.info("Student assigned successfully with enrollment ID: {}", savedEnrollment.getId());
+
+		return modelMapper.map(savedEnrollment, StudentEnrollmentResponseDTO.class);
+	}
+
+	/**
+	 * Get current enrollment of student.
+	 *
+	 * @param studentId student ID
+	 * @return current enrollment
+	 */
+	@Override
+	public StudentEnrollmentResponseDTO getCurrentEnrollment(Long studentId) {
+
+		logger.info("Request received to fetch current enrollment for student ID: {}", studentId);
+
+		StudentEnrollmentEntity enrollment = enrollmentRepository.findByStudentIdAndIsCurrentTrue(studentId)
+				.orElseThrow(() -> {
+					logger.error("No current enrollment found for student ID: {}", studentId);
+					return new ResourceNotFoundException("Current enrollment not found");
+				});
+
+		return modelMapper.map(enrollment, StudentEnrollmentResponseDTO.class);
+	}
+
+	/**
+	 * Get student enrollment history.
+	 *
+	 * @param studentId student ID
+	 * @return history list
+	 */
+	@Override
+	public List<StudentEnrollmentResponseDTO> getStudentHistory(Long studentId) {
+
+		logger.info("Request received to fetch history for student ID: {}", studentId);
+
+		return enrollmentRepository.findByStudentIdOrderByIdDesc(studentId).stream()
+				.map(data -> modelMapper.map(data, StudentEnrollmentResponseDTO.class)).collect(Collectors.toList());
+	}
+
+	/**
+	 * Get students by class.
+	 *
+	 * @param classId class ID
+	 * @return list
+	 */
+	@Override
+	public List<StudentEnrollmentResponseDTO> getStudentsByClass(Long classId) {
+
+		logger.info("Request received to fetch students by class ID: {}", classId);
+
+		return enrollmentRepository.findByClassEntityId(classId).stream()
+				.map(data -> modelMapper.map(data, StudentEnrollmentResponseDTO.class)).collect(Collectors.toList());
+	}
+
+	/**
+	 * Get students by section.
+	 *
+	 * @param sectionId section ID
+	 * @return list
+	 */
+	@Override
+	public List<StudentEnrollmentResponseDTO> getStudentsBySection(Long sectionId) {
+
+		logger.info("Request received to fetch students by section ID: {}", sectionId);
+
+		return enrollmentRepository.findBySectionEntityId(sectionId).stream()
+				.map(data -> modelMapper.map(data, StudentEnrollmentResponseDTO.class)).collect(Collectors.toList());
+	}
+
+	/**
+	 * Promote student to next class.
+	 *
+	 * @param dto request data
+	 * @return updated data
+	 */
+	@Override
+	public StudentEnrollmentResponseDTO promoteStudent(StudentEnrollmentRequestDTO dto) {
+
+		logger.info("Request received to promote student ID: {}", dto.getStudentId());
+
+		StudentEnrollmentEntity current = enrollmentRepository.findByStudentIdAndIsCurrentTrue(dto.getStudentId())
+				.orElseThrow(() -> new ResourceNotFoundException("Current enrollment not found"));
+
+		current.setIsCurrent(false);
+		enrollmentRepository.save(current);
+
+		return assignStudent(dto);
+	}
+
+	/**
+	 * Transfer student section.
+	 *
+	 * @param enrollmentId enrollment ID
+	 * @param sectionId    new section ID
+	 * @return updated data
+	 */
+	@Override
+	public StudentEnrollmentResponseDTO transferSection(Long enrollmentId, Long sectionId) {
+
+		logger.info("Request received to transfer section for enrollment ID: {}", enrollmentId);
+
+		StudentEnrollmentEntity enrollment = enrollmentRepository.findById(enrollmentId).orElseThrow(() -> {
+			logger.error("Enrollment not found with ID: {}", enrollmentId);
+			return new ResourceNotFoundException("Enrollment not found");
+		});
+
+		SectionEntity section = sectionRepository.findById(sectionId).orElseThrow(() -> {
+			logger.error("Section not found with ID: {}", sectionId);
+			return new ResourceNotFoundException("Section not found");
+		});
+
+		enrollment.setSectionEntity(section);
+
+		StudentEnrollmentEntity updatedEnrollment = enrollmentRepository.save(enrollment);
+
+		logger.info("Section transferred successfully for enrollment ID: {}", enrollmentId);
+
+		return modelMapper.map(updatedEnrollment, StudentEnrollmentResponseDTO.class);
+	}
+}

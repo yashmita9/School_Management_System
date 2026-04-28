@@ -1,0 +1,177 @@
+package com.erp.school.controller;
+
+import java.util.List;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.*;
+
+import com.erp.school.common.ApiResponse;
+import com.erp.school.constant.AppConstants;
+import com.erp.school.dto.ChangeRequestDto;
+import com.erp.school.dto.UserRequestDTO;
+import com.erp.school.dto.UserResponseDTO;
+import com.erp.school.entity.UserEntity;
+import com.erp.school.entityenum.Status;
+import com.erp.school.entityenum.UserRole;
+import com.erp.school.service.UserService;
+import com.erp.school.util.ValidationUtil;
+
+import jakarta.validation.Valid;
+
+/**
+ * Controller for user management APIs.
+ */
+@RestController
+@RequestMapping(AppConstants.USERS)
+public class UserController {
+
+	private static final Logger logger = LogManager.getLogger(UserController.class);
+
+	@Autowired
+	private UserService userService;
+
+	@Autowired
+	private ValidationUtil validationUtil;
+
+	/**
+	 * Create new user.
+	 */
+	@PostMapping
+	public ResponseEntity<ApiResponse> createUser(@Valid @RequestBody UserRequestDTO dto, BindingResult bindingResult) {
+
+		logger.info("Create user request received");
+
+		ApiResponse validation = validationUtil.validate(bindingResult);
+
+		if (!validation.isSuccess()) {
+			logger.warn("Create user validation failed");
+			return ResponseEntity.badRequest().body(validation);
+		}
+
+		UserResponseDTO user = userService.create(dto);
+
+		logger.info("User created successfully");
+
+		return ResponseEntity.ok(new ApiResponse(true, "User created successfully", user));
+	}
+
+	/**
+	 * Get user by id.
+	 */
+	@GetMapping(AppConstants.USER_BY_ID)
+	public ResponseEntity<ApiResponse> getById(@PathVariable Long id) {
+
+		logger.info("Get user request for id: {}", id);
+
+		UserResponseDTO user = userService.getById(id);
+
+		return ResponseEntity.ok(new ApiResponse(true, "User fetched successfully", user));
+	}
+
+	/**
+	 * Get all users.
+	 */
+	@GetMapping
+	public ResponseEntity<ApiResponse> getAll(@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size, @RequestParam(required = false) String keyword,
+			@RequestParam(required = false) UserRole role, @RequestParam(required = false) Status status) {
+
+		logger.info("Get all users request received");
+
+		Page<UserResponseDTO> users = userService.getUsers(page, size, keyword, role, status);
+
+		return ResponseEntity.ok(new ApiResponse(true, "Users fetched successfully", users));
+	}
+
+	/**
+	 * Update user details.
+	 */
+	@PutMapping(AppConstants.USER_BY_ID)
+	public ResponseEntity<ApiResponse> updateUser(@PathVariable Long id, @Valid @RequestBody UserRequestDTO dto,
+			BindingResult bindingResult) {
+
+		logger.info("Update user request for id: {}", id);
+
+		ApiResponse validation = validationUtil.validate(bindingResult);
+
+		if (!validation.isSuccess()) {
+			logger.warn("Update user validation failed for id: {}", id);
+			return ResponseEntity.badRequest().body(validation);
+		}
+
+		UserResponseDTO user = userService.update(id, dto);
+
+		logger.info("User updated successfully for id: {}", id);
+
+		return ResponseEntity.ok(new ApiResponse(true, "User updated successfully", user));
+	}
+
+	/**
+	 * Toggle user status.
+	 */
+	@PatchMapping(AppConstants.USER_TOGGLE_STATUS)
+	public ResponseEntity<ApiResponse> toggleStatus(@PathVariable Long id) {
+
+		logger.info("Toggle status request for id: {}", id);
+
+		UserResponseDTO user = userService.toggleStatus(id);
+
+		return ResponseEntity.ok(new ApiResponse(true, "Status toggled successfully", user));
+	}
+
+	/**
+	 * Soft delete user.
+	 */
+	@DeleteMapping(AppConstants.USER_BY_ID)
+	public ResponseEntity<ApiResponse> softDetele(@PathVariable Long id) {
+
+		logger.info("Delete user request for id: {}", id);
+
+		userService.deleteUser(id);
+
+		logger.info("User deleted successfully for id: {}", id);
+
+		return ResponseEntity.ok(new ApiResponse(true, "User deleted successfully", null));
+	}
+
+	/**
+	 * Change password.
+	 */
+	@PostMapping(AppConstants.USER_CHANGE_PASSWORD)
+	public ResponseEntity<ApiResponse> changePassword(@Valid @RequestBody ChangeRequestDto request,
+			BindingResult bindingResult) {
+
+		logger.info("Change password request received");
+
+		ApiResponse validation = validationUtil.validate(bindingResult);
+
+		if (!validation.isSuccess()) {
+			logger.warn("Change password validation failed");
+			return ResponseEntity.badRequest().body(validation);
+		}
+
+		userService.changePassword(request);
+
+		logger.info("Password changed successfully");
+
+		return ResponseEntity.ok(new ApiResponse(true, "Change Password Successfully", null));
+	}
+
+	/**
+	 * Get logged-in user profile.
+	 */
+	@GetMapping(AppConstants.USER_PROFILE)
+	public ResponseEntity<UserResponseDTO> getProfile() {
+
+		logger.info("Get profile request received");
+
+		UserResponseDTO user = userService.getProfile();
+
+		return ResponseEntity.ok(user);
+	}
+}

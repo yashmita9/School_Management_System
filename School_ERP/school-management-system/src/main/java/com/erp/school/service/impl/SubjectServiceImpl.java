@@ -1,0 +1,193 @@
+package com.erp.school.service.impl;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.modelmapper.ModelMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+
+import com.erp.school.common.PageResponseDTO;
+import com.erp.school.dto.SubjectRequestDTO;
+import com.erp.school.dto.SubjectResponseDTO;
+import com.erp.school.entity.SubjectEntity;
+import com.erp.school.entityenum.Status;
+import com.erp.school.exception.BadRequestException;
+import com.erp.school.exception.ResourceNotFoundException;
+import com.erp.school.repository.SubjectRepository;
+import com.erp.school.service.SubjectServiceInt;
+
+import jakarta.persistence.criteria.Predicate;
+
+/**
+ * Service implementation for Subject module. Handles subject master operations.
+ * 
+ * @author Yashmita Rathore
+ */
+@Service
+public class SubjectServiceImpl implements SubjectServiceInt {
+
+	private static final Logger logger = LoggerFactory.getLogger(SubjectServiceImpl.class);
+
+	@Autowired
+	private SubjectRepository subjectRepository;
+
+	@Autowired
+	private ModelMapper modelMapper;
+
+	@Override
+	public SubjectResponseDTO addSubject(SubjectRequestDTO dto) {
+
+		logger.info("Request received to add subject: {}", dto.getSubjectName());
+
+		if (subjectRepository.existsBySubjectCode(dto.getSubjectCode())) {
+			logger.error("Subject code already exists: {}", dto.getSubjectCode());
+			throw new BadRequestException("Subject code already exists");
+		}
+
+		if (subjectRepository.existsBySubjectNameIgnoreCase(dto.getSubjectName())) {
+			logger.error("Subject name already exists: {}", dto.getSubjectName());
+			throw new BadRequestException("Subject name already exists");
+		}
+
+		SubjectEntity entity = modelMapper.map(dto, SubjectEntity.class);
+		entity.setStatus(Status.ACTIVE);
+
+		SubjectEntity savedEntity = subjectRepository.save(entity);
+
+		logger.info("Subject added successfully with ID: {}", savedEntity.getId());
+
+		return modelMapper.map(savedEntity, SubjectResponseDTO.class);
+	}
+
+	@Override
+	public SubjectResponseDTO updateSubject(Long id, SubjectRequestDTO dto) {
+
+		logger.info("Request received to update subject ID: {}", id);
+
+		SubjectEntity entity = subjectRepository.findById(id).orElseThrow(() -> {
+			logger.error("Subject not found with ID: {}", id);
+			return new ResourceNotFoundException("Subject not found");
+		});
+
+		entity.setSubjectCode(dto.getSubjectCode());
+		entity.setSubjectName(dto.getSubjectName());
+		entity.setDescription(dto.getDescription());
+
+		SubjectEntity updatedEntity = subjectRepository.save(entity);
+
+		logger.info("Subject updated successfully with ID: {}", updatedEntity.getId());
+
+		return modelMapper.map(updatedEntity, SubjectResponseDTO.class);
+	}
+
+	@Override
+	public SubjectResponseDTO getById(Long id) {
+
+		logger.info("Request received to fetch subject ID: {}", id);
+
+		SubjectEntity entity = subjectRepository.findById(id).orElseThrow(() -> {
+			logger.error("Subject not found with ID: {}", id);
+			return new ResourceNotFoundException("Subject not found");
+		});
+
+		return modelMapper.map(entity, SubjectResponseDTO.class);
+	}
+
+	@Override
+	public List<SubjectResponseDTO> getAllActive() {
+
+		logger.info("Request received to fetch all active subjects");
+
+		return subjectRepository.findByStatus(Status.ACTIVE).stream()
+				.map(subject -> modelMapper.map(subject, SubjectResponseDTO.class)).collect(Collectors.toList());
+	}
+
+	@Override
+	public void deleteSubject(Long id) {
+
+		logger.info("Request received to delete subject ID: {}", id);
+
+		SubjectEntity entity = subjectRepository.findById(id).orElseThrow(() -> {
+			logger.error("Subject not found with ID: {}", id);
+			return new ResourceNotFoundException("Subject not found");
+		});
+
+		entity.setStatus(Status.DELETED);
+		subjectRepository.save(entity);
+
+		logger.info("Subject deleted successfully with ID: {}", id);
+	}
+
+	@Override
+	public SubjectResponseDTO updateStatus(Long id, Status status) {
+
+		SubjectEntity entity = subjectRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
+
+		entity.setStatus(status);
+
+		SubjectEntity updated = subjectRepository.save(entity);
+
+		return modelMapper.map(updated, SubjectResponseDTO.class);
+	}
+
+	@Override
+	public PageResponseDTO<SubjectResponseDTO> getSubjects(int page, int size, String keyword, Status status) {
+
+		Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+
+		Specification<SubjectEntity> spec = (root, query, cb) -> {
+
+			List<Predicate> predicates = new ArrayList<>();
+
+			// soft delete hide
+			predicates.add(cb.isNull(root.get("deletedAt")));
+
+			// search
+			if (keyword != null && !keyword.trim().isEmpty()) {
+
+				String search = "%" + keyword.toLowerCase().trim() + "%";
+
+				Predicate p1 = cb.like(cb.lower(root.get("subjectCode")), search);
+
+				Predicate p2 = cb.like(cb.lower(root.get("subjectName")), search);
+
+				Predicate p3 = cb.like(cb.lower(root.get("description")), search);
+
+				predicates.add(cb.or(p1, p2, p3));
+			}
+
+			// status filter
+			if (status != null) {
+				predicates.add(cb.equal(root.get("status"), status));
+			}
+
+			return cb.and(predicates.toArray(new Predicate[0]));
+		};
+
+		Page<SubjectEntity> subjectPage = subjectRepository.findAll(spec, pageable);
+
+		List<SubjectResponseDTO> list = subjectPage.getContent().stream()
+				.map(subject -> modelMapper.map(subject, SubjectResponseDTO.class)).toList();
+
+		PageResponseDTO<SubjectResponseDTO> response = new PageResponseDTO<>();
+
+		response.setContent(list);
+		response.setPage(subjectPage.getNumber());
+		response.setSize(subjectPage.getSize());
+		response.setTotalElements(subjectPage.getTotalElements());
+		response.setTotalPages(subjectPage.getTotalPages());
+		response.setLast(subjectPage.isLast());
+
+		return response;
+	}
+}

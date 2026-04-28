@@ -1,0 +1,55 @@
+package com.erp.school.repository;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import com.erp.school.common.BaseRepository;
+import com.erp.school.entity.StudentAttendanceEntity;
+
+/**
+ * Repository for Student Attendance.
+ *
+ * Used for: - Mark attendance - Duplicate check - Fetch class attendance -
+ * Student history - Monthly reports
+ *
+ * @author Yashmita Rathore
+ */
+@Repository
+public interface StudentAttendanceRepository extends BaseRepository<StudentAttendanceEntity, Long> {
+
+	/**
+	 * Check if attendance already marked for student on same date
+	 */
+	boolean existsByStudentIdAndAttendanceDate(Long studentId, LocalDate attendanceDate);
+
+	/**
+	 * Get attendance of one student by date
+	 */
+	Optional<StudentAttendanceEntity> findByStudentIdAndAttendanceDate(Long studentId, LocalDate attendanceDate);
+
+	/**
+	 * Fetch all attendance of class-section for specific date
+	 */
+	List<StudentAttendanceEntity> findByClassEntityIdAndSectionEntityIdAndAttendanceDate(Long classId, Long sectionId,
+			LocalDate attendanceDate);
+
+	/**
+	 * Full attendance history of student
+	 */
+	List<StudentAttendanceEntity> findByStudentIdOrderByAttendanceDateDesc(Long studentId);
+
+	/**
+	 * Monthly attendance of student
+	 */
+	List<StudentAttendanceEntity> findByStudentIdAndAttendanceDateBetween(Long studentId, LocalDate startDate,
+			LocalDate endDate);
+
+	/**
+	 * All attendance marked by teacher
+	 */
+	List<StudentAttendanceEntity> findByMarkedById(Long teacherId);
+}

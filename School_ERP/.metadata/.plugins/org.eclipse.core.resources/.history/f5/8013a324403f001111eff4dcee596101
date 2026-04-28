@@ -1,0 +1,136 @@
+package com.erp.school.controller;
+
+import java.time.LocalDate;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.*;
+
+import com.erp.school.common.ApiResponse;
+import com.erp.school.dto.StudentAttendanceRequestDTO;
+import com.erp.school.dto.StudentAttendanceResponseDTO;
+import com.erp.school.service.StudentAttendanceServiceInt;
+import com.erp.school.util.ValidationUtil;
+
+import jakarta.validation.Valid;
+
+/**
+ * Controller for Student Attendance Module.
+ *
+ * Features:
+ * - Mark daily attendance
+ * - View class attendance by date
+ * - View student attendance history
+ * - View date range report
+ *
+ * @author Yashmita Rathore
+ */
+@RestController
+@RequestMapping("/api/student-attendance")
+public class StudentAttendanceController {
+
+	private static final Logger logger =
+			LoggerFactory.getLogger(StudentAttendanceController.class);
+
+	@Autowired
+	private StudentAttendanceServiceInt attendanceService;
+
+	@Autowired
+	private ValidationUtil validationUtil;
+
+	/**
+	 * Mark Attendance
+	 */
+	@PostMapping
+	public ResponseEntity<ApiResponse> markAttendance(
+			@Valid @RequestBody StudentAttendanceRequestDTO dto,
+			BindingResult bindingResult) {
+
+		logger.info("Attendance request received for class ID: {}", dto.getClassId());
+
+		ApiResponse validationResponse = validationUtil.validate(bindingResult);
+
+		if (!validationResponse.isSuccess()) {
+			return ResponseEntity.badRequest().body(validationResponse);
+		}
+
+		String message = attendanceService.markAttendance(dto);
+
+		return ResponseEntity.ok(
+				new ApiResponse(true, message, null));
+	}
+
+	/**
+	 * Get class attendance by date
+	 */
+	@GetMapping("/class/{classId}/section/{sectionId}")
+	public ResponseEntity<ApiResponse> getClassAttendance(
+			@PathVariable Long classId,
+			@PathVariable Long sectionId,
+			@RequestParam
+			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+			LocalDate attendanceDate) {
+
+		logger.info("Fetch attendance for class {}, section {}",
+				classId, sectionId);
+
+		List<StudentAttendanceResponseDTO> response =
+				attendanceService.getClassAttendance(
+						classId, sectionId, attendanceDate);
+
+		return ResponseEntity.ok(
+				new ApiResponse(true,
+						"Attendance fetched successfully",
+						response));
+	}
+
+	/**
+	 * Student attendance history
+	 */
+	@GetMapping("/student/{studentId}")
+	public ResponseEntity<ApiResponse> getStudentAttendanceHistory(
+			@PathVariable Long studentId) {
+
+		logger.info("Fetch attendance history for student ID: {}", studentId);
+
+		List<StudentAttendanceResponseDTO> response =
+				attendanceService.getStudentAttendanceHistory(studentId);
+
+		return ResponseEntity.ok(
+				new ApiResponse(true,
+						"Student attendance history fetched successfully",
+						response));
+	}
+
+	/**
+	 * Student attendance by date range
+	 */
+	@GetMapping("/student/{studentId}/report")
+	public ResponseEntity<ApiResponse> getStudentAttendanceByDateRange(
+			@PathVariable Long studentId,
+
+			@RequestParam
+			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+			LocalDate startDate,
+
+			@RequestParam
+			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+			LocalDate endDate) {
+
+		logger.info("Fetch attendance report for student ID: {}", studentId);
+
+		List<StudentAttendanceResponseDTO> response =
+				attendanceService.getStudentAttendanceByDateRange(
+						studentId, startDate, endDate);
+
+		return ResponseEntity.ok(
+				new ApiResponse(true,
+						"Attendance report fetched successfully",
+						response));
+	}
+}

@@ -1,0 +1,270 @@
+package com.erp.school.service.impl;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.modelmapper.ModelMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.erp.school.dto.TeacherAssignmentRequestDTO;
+import com.erp.school.dto.TeacherAssignmentResponseDTO;
+import com.erp.school.entity.ClassEntity;
+import com.erp.school.entity.SectionEntity;
+import com.erp.school.entity.SubjectEntity;
+import com.erp.school.entity.TeacherAssignmentEntity;
+import com.erp.school.entity.UserEntity;
+import com.erp.school.entityenum.Status;
+import com.erp.school.entityenum.UserRole;
+import com.erp.school.exception.BadRequestException;
+import com.erp.school.exception.ResourceNotFoundException;
+import com.erp.school.repository.ClassRepository;
+import com.erp.school.repository.SectionRepository;
+import com.erp.school.repository.SubjectRepository;
+import com.erp.school.repository.TeacherAssignmentRepository;
+import com.erp.school.repository.UserRepository;
+import com.erp.school.service.TeacherAssignmentServiceInt;
+
+/**
+ * Service implementation for Teacher Assignment module. Uses ModelMapper.
+ * 
+ * @author Yashmita Rathore
+ */
+@Service
+@Transactional
+public class TeacherAssignmentServiceImpl implements TeacherAssignmentServiceInt {
+
+	private static final Logger logger = LoggerFactory.getLogger(TeacherAssignmentServiceImpl.class);
+
+	@Autowired
+	private TeacherAssignmentRepository repository;
+
+	@Autowired
+	private UserRepository userRepository;
+
+	@Autowired
+	private ClassRepository classRepository;
+
+	@Autowired
+	private SectionRepository sectionRepository;
+
+	@Autowired
+	private SubjectRepository subjectRepository;
+
+	@Autowired
+	private ModelMapper modelMapper;
+
+	@Override
+	public TeacherAssignmentResponseDTO assignTeacher(TeacherAssignmentRequestDTO dto) {
+
+		logger.info("Request received to assign teacher ID: {}", dto.getTeacherId());
+
+		/* Duplicate Check */
+		boolean exists = repository.existsByTeacherIdAndClassEntityIdAndSectionEntityIdAndSubjectId(dto.getTeacherId(),
+				dto.getClassId(), dto.getSectionId(), dto.getSubjectId());
+
+		if (exists) {
+			logger.warn("Teacher already assigned");
+			throw new BadRequestException("Teacher already assigned");
+		}
+
+		/* Teacher Validation */
+		UserEntity teacher = userRepository.findById(dto.getTeacherId()).orElseThrow(() -> {
+			logger.error("Teacher not found with ID: {}", dto.getTeacherId());
+			return new ResourceNotFoundException("Teacher not found");
+		});
+
+		if (!UserRole.TEACHER.equals(teacher.getRole())) {
+			logger.warn("User ID {} is not TEACHER", dto.getTeacherId());
+			throw new BadRequestException("User is not a TEACHER");
+		}
+
+		/* Build Entity */
+		TeacherAssignmentEntity entity = buildEntity(new TeacherAssignmentEntity(), dto);
+
+		entity.setStatus(Status.ACTIVE);
+
+		/* Save */
+		TeacherAssignmentEntity saved = repository.save(entity);
+
+		logger.info("Teacher assigned successfully with assignment ID: {}", saved.getId());
+
+		/* Response DTO */
+		return convertToResponseDTO(saved);
+	}
+
+	/**
+	 * Convert Entity to Response DTO
+	 */
+	private TeacherAssignmentResponseDTO convertToResponseDTO(TeacherAssignmentEntity entity) {
+
+		TeacherAssignmentResponseDTO dto = new TeacherAssignmentResponseDTO();
+
+		dto.setId(entity.getId());
+
+		dto.setTeacherId(entity.getTeacher().getId());
+		dto.setTeacherName(entity.getTeacher().getFirstName() + " " + entity.getTeacher().getLastName());
+
+		dto.setClassId(entity.getClassEntity().getId());
+		dto.setClassName(entity.getClassEntity().getClassName());
+
+		dto.setSectionId(entity.getSectionEntity().getId());
+		dto.setSectionName(entity.getSectionEntity().getSectionName());
+
+		dto.setSubjectId(entity.getSubject().getId());
+		dto.setSubjectName(entity.getSubject().getSubjectName());
+
+		dto.setStatus(entity.getStatus());
+
+		return dto;
+	}
+
+	@Transactional
+	@Override
+	public TeacherAssignmentResponseDTO updateAssignment(Long id, TeacherAssignmentRequestDTO dto) {
+
+		logger.info("Request received to update assignment ID: {}", id);
+
+		TeacherAssignmentEntity entity = repository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Assignment not found"));
+
+		/* Validate Teacher */
+		UserEntity teacher = userRepository.findById(dto.getTeacherId())
+				.orElseThrow(() -> new ResourceNotFoundException("Teacher not found"));
+
+		if (!UserRole.TEACHER.equals(teacher.getRole())) {
+			throw new BadRequestException("User is not a TEACHER");
+		}
+
+		/* Duplicate Check (same teacher/class/section/subject on another record) */
+		boolean exists = repository.existsByTeacherIdAndClassEntityIdAndSectionEntityIdAndSubjectIdAndIdNot(
+				dto.getTeacherId(), dto.getClassId(), dto.getSectionId(), dto.getSubjectId(), id);
+
+		if (exists) {
+			throw new BadRequestException("Teacher assignment already exists");
+		}
+
+		/* Update Entity */
+		buildEntity(entity, dto);
+
+		TeacherAssignmentEntity updated = repository.save(entity);
+
+		logger.info("Assignment updated successfully with ID: {}", updated.getId());
+
+		return convertToResponseDTO(updated);
+	}
+
+	@Transactional(readOnly = true)
+	@Override
+	public TeacherAssignmentResponseDTO getById(Long id) {
+
+		TeacherAssignmentEntity entity = repository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Assignment not found"));
+
+		return convertToResponseDTO(entity);
+	}
+
+	@Transactional(readOnly = true)
+	@Override
+	public List<TeacherAssignmentResponseDTO> getAll() {
+
+		return repository.findAll().stream().map(this::convertToResponseDTO).collect(Collectors.toList());
+	}
+
+	@Transactional(readOnly = true)
+	@Override
+	public List<TeacherAssignmentResponseDTO> getByTeacher(Long teacherId) {
+
+		UserEntity teacher = userRepository.findById(teacherId)
+				.orElseThrow(() -> new ResourceNotFoundException("Teacher not found"));
+
+		if (!UserRole.TEACHER.equals(teacher.getRole())) {
+			throw new BadRequestException("User is not a TEACHER");
+		}
+
+		return repository.findByTeacherId(teacherId).stream().map(this::convertToResponseDTO)
+				.collect(Collectors.toList());
+	}
+
+	@Transactional(readOnly = true)
+	@Override
+	public List<TeacherAssignmentResponseDTO> getByClassAndSection(Long classId, Long sectionId) {
+
+		classRepository.findById(classId).orElseThrow(() -> new ResourceNotFoundException("Class not found"));
+
+		sectionRepository.findById(sectionId).orElseThrow(() -> new ResourceNotFoundException("Section not found"));
+
+		return repository.findByClassEntityIdAndSectionEntityId(classId, sectionId).stream()
+				.map(this::convertToResponseDTO).collect(Collectors.toList());
+	}
+
+	@Transactional(readOnly = true)
+	@Override
+	public List<TeacherAssignmentResponseDTO> getBySubject(Long subjectId) {
+
+		subjectRepository.findById(subjectId).orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
+
+		return repository.findBySubjectId(subjectId).stream().map(this::convertToResponseDTO)
+				.collect(Collectors.toList());
+	}
+
+	@Override
+	public void deleteAssignment(Long id) {
+
+		TeacherAssignmentEntity entity = repository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Assignment not found"));
+
+		entity.setStatus(Status.DELETED);
+
+		repository.save(entity);
+	}
+
+	private TeacherAssignmentEntity buildEntity(TeacherAssignmentEntity entity, TeacherAssignmentRequestDTO dto) {
+
+		UserEntity teacher = userRepository.findById(dto.getTeacherId())
+				.orElseThrow(() -> new ResourceNotFoundException("Teacher not found"));
+
+		ClassEntity classEntity = classRepository.findById(dto.getClassId())
+				.orElseThrow(() -> new ResourceNotFoundException("Class not found"));
+
+		SectionEntity sectionEntity = sectionRepository.findById(dto.getSectionId())
+				.orElseThrow(() -> new ResourceNotFoundException("Section not found"));
+
+		SubjectEntity subject = subjectRepository.findById(dto.getSubjectId())
+				.orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
+
+		entity.setTeacher(teacher);
+		entity.setClassEntity(classEntity);
+		entity.setSectionEntity(sectionEntity);
+		entity.setSubject(subject);
+
+		return entity;
+	}
+
+	@Transactional
+	@Override
+	public TeacherAssignmentResponseDTO toggleStatus(Long id) {
+
+		logger.info("Toggle status request for assignment ID: {}", id);
+
+		TeacherAssignmentEntity entity = repository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Assignment not found"));
+
+		/* Deleted record toggle not allowed */
+		if (Status.DELETED.equals(entity.getStatus())) {
+			throw new BadRequestException("Deleted assignment cannot be toggled");
+		}
+
+		/* ACTIVE <-> INACTIVE */
+		entity.setStatus(entity.getStatus() == Status.ACTIVE ? Status.INACTIVE : Status.ACTIVE);
+
+		repository.save(entity);
+
+		logger.info("Assignment status toggled successfully");
+
+		return convertToResponseDTO(entity);
+	}
+}

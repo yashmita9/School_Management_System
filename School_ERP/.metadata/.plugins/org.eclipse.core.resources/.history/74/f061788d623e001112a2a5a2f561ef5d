@@ -1,0 +1,5 @@
+package com.erp.school.entity;
+
+public class SubjectEntity {
+
+}

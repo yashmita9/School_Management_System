@@ -1,0 +1,5 @@
+package com.erp.school.entityenum;
+
+public class AttendanceStatus {
+
+}

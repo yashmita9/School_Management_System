@@ -1,0 +1,129 @@
+package com.erp.school.entity;
+
+import java.time.LocalDate;
+
+import com.erp.school.common.BaseEntity;
+import com.erp.school.entityenum.StudentStatus;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "student")
+public class StudentEntity extends BaseEntity {
+
+	@Column(name = "admission_no", unique = true, nullable = false)
+	private String admissionNo;
+
+	@Column(name = "student_name", nullable = false)
+	private String studentName;
+
+	@Column(name = "mobile", nullable = false)
+	private String mobile;
+
+	@Column(name = "email")
+	private String email;
+
+	@Column(name = "dob")
+	private LocalDate dob;
+
+	@Column(name = "gender")
+	private String gender;
+
+	@Column(name = "admission_date", nullable = false)
+	private LocalDate admissionDate;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "status")
+	private StudentStatus status;
+
+	@Column(name = "profile_pic")
+	private String profilePic;
+
+	@Column(name = "enquiry_id")
+	private Long enquiryId;
+
+	public String getAdmissionNo() {
+		return admissionNo;
+	}
+
+	public void setAdmissionNo(String admissionNo) {
+		this.admissionNo = admissionNo;
+	}
+
+	public String getStudentName() {
+		return studentName;
+	}
+
+	public void setStudentName(String studentName) {
+		this.studentName = studentName;
+	}
+
+	public String getMobile() {
+		return mobile;
+	}
+
+	public void setMobile(String mobile) {
+		this.mobile = mobile;
+	}
+
+	public String getEmail() {
+		return email;
+	}
+
+	public void setEmail(String email) {
+		this.email = email;
+	}
+
+	public LocalDate getDob() {
+		return dob;
+	}
+
+	public void setDob(LocalDate dob) {
+		this.dob = dob;
+	}
+
+	public String getGender() {
+		return gender;
+	}
+
+	public void setGender(String gender) {
+		this.gender = gender;
+	}
+
+	public LocalDate getAdmissionDate() {
+		return admissionDate;
+	}
+
+	public void setAdmissionDate(LocalDate admissionDate) {
+		this.admissionDate = admissionDate;
+	}
+
+	public StudentStatus getStatus() {
+		return status;
+	}
+
+	public void setStatus(StudentStatus status) {
+		this.status = status;
+	}
+
+	public String getProfilePic() {
+		return profilePic;
+	}
+
+	public void setProfilePic(String profilePic) {
+		this.profilePic = profilePic;
+	}
+
+	public Long getEnquiryId() {
+		return enquiryId;
+	}
+
+	public void setEnquiryId(Long enquiryId) {
+		this.enquiryId = enquiryId;
+	}
+
+}

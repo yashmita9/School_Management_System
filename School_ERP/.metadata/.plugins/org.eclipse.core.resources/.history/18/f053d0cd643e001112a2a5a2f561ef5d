@@ -1,0 +1,84 @@
+package com.erp.school.entity;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+
+/**
+ * Teacher Assignment Entity.
+ * Maps teacher with class, section and subject.
+ * 
+ * Used for:
+ * - Class teacher / subject teacher mapping
+ * - Attendance module
+ * - Result module
+ * - View teacher allocations
+ * 
+ * @author Yashmita Rathore
+ */
+@Entity
+@Table(name = "teacher_assignments")
+public class TeacherAssignmentEntity extends BaseEntity {
+
+	/**
+	 * Teacher user reference (role = TEACHER)
+	 */
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "teacher_id", nullable = false)
+	private UserEntity teacher;
+
+	/**
+	 * Class reference
+	 */
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "class_id", nullable = false)
+	private ClassEntity classEntity;
+
+	/**
+	 * Section reference
+	 */
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "section_id", nullable = false)
+	private SectionEntity sectionEntity;
+
+	/**
+	 * Subject reference
+	 */
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "subject_id", nullable = false)
+	private SubjectEntity subject;
+
+	public UserEntity getTeacher() {
+		return teacher;
+	}
+
+	public void setTeacher(UserEntity teacher) {
+		this.teacher = teacher;
+	}
+
+	public ClassEntity getClassEntity() {
+		return classEntity;
+	}
+
+	public void setClassEntity(ClassEntity classEntity) {
+		this.classEntity = classEntity;
+	}
+
+	public SectionEntity getSectionEntity() {
+		return sectionEntity;
+	}
+
+	public void setSectionEntity(SectionEntity sectionEntity) {
+		this.sectionEntity = sectionEntity;
+	}
+
+	public SubjectEntity getSubject() {
+		return subject;
+	}
+
+	public void setSubject(SubjectEntity subject) {
+		this.subject = subject;
+	}
+}

@@ -1,0 +1,142 @@
+package com.erp.school.service.impl;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.modelmapper.ModelMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.erp.school.dto.SubjectRequestDTO;
+import com.erp.school.dto.SubjectResponseDTO;
+import com.erp.school.entity.SubjectEntity;
+import com.erp.school.entityenum.Status;
+import com.erp.school.exception.BadRequestException;
+import com.erp.school.exception.ResourceNotFoundException;
+import com.erp.school.repository.SubjectRepository;
+import com.erp.school.service.SubjectServiceInt;
+
+/**
+ * Service implementation for Subject module.
+ * Handles subject master operations.
+ * 
+ * @author Yashmita Rathore
+ */
+@Service
+public class SubjectServiceImpl implements SubjectServiceInt {
+
+	private static final Logger logger = LoggerFactory.getLogger(SubjectServiceImpl.class);
+
+	@Autowired
+	private SubjectRepository subjectRepository;
+
+	@Autowired
+	private ModelMapper modelMapper;
+
+	@Override
+	public SubjectResponseDTO addSubject(SubjectRequestDTO dto) {
+
+		logger.info("Request received to add subject: {}", dto.getSubjectName());
+
+		if (subjectRepository.existsBySubjectCode(dto.getSubjectCode())) {
+			logger.error("Subject code already exists: {}", dto.getSubjectCode());
+			throw new BadRequestException("Subject code already exists");
+		}
+
+		if (subjectRepository.existsBySubjectNameIgnoreCase(dto.getSubjectName())) {
+			logger.error("Subject name already exists: {}", dto.getSubjectName());
+			throw new BadRequestException("Subject name already exists");
+		}
+
+		SubjectEntity entity = modelMapper.map(dto, SubjectEntity.class);
+		entity.setStatus(Status.ACTIVE);
+
+		SubjectEntity savedEntity = subjectRepository.save(entity);
+
+		logger.info("Subject added successfully with ID: {}", savedEntity.getId());
+
+		return modelMapper.map(savedEntity, SubjectResponseDTO.class);
+	}
+
+	@Override
+	public SubjectResponseDTO updateSubject(Long id, SubjectRequestDTO dto) {
+
+		logger.info("Request received to update subject ID: {}", id);
+
+		SubjectEntity entity = subjectRepository.findById(id).orElseThrow(() -> {
+			logger.error("Subject not found with ID: {}", id);
+			return new ResourceNotFoundException("Subject not found");
+		});
+
+		entity.setSubjectCode(dto.getSubjectCode());
+		entity.setSubjectName(dto.getSubjectName());
+		entity.setDescription(dto.getDescription());
+
+		SubjectEntity updatedEntity = subjectRepository.save(entity);
+
+		logger.info("Subject updated successfully with ID: {}", updatedEntity.getId());
+
+		return modelMapper.map(updatedEntity, SubjectResponseDTO.class);
+	}
+
+	@Override
+	public SubjectResponseDTO getById(Long id) {
+
+		logger.info("Request received to fetch subject ID: {}", id);
+
+		SubjectEntity entity = subjectRepository.findById(id).orElseThrow(() -> {
+			logger.error("Subject not found with ID: {}", id);
+			return new ResourceNotFoundException("Subject not found");
+		});
+
+		return modelMapper.map(entity, SubjectResponseDTO.class);
+	}
+
+	@Override
+	public List<SubjectResponseDTO> getAll() {
+
+		logger.info("Request received to fetch all subjects");
+
+		return subjectRepository.findAll().stream()
+				.map(subject -> modelMapper.map(subject, SubjectResponseDTO.class))
+				.collect(Collectors.toList());
+	}
+
+	@Override
+	public List<SubjectResponseDTO> getAllActive() {
+
+		logger.info("Request received to fetch all active subjects");
+
+		return subjectRepository.findByStatus(Status.ACTIVE).stream()
+				.map(subject -> modelMapper.map(subject, SubjectResponseDTO.class))
+				.collect(Collectors.toList());
+	}
+
+	@Override
+	public List<SubjectResponseDTO> searchByName(String keyword) {
+
+		logger.info("Request received to search subjects by keyword: {}", keyword);
+
+		return subjectRepository.findBySubjectNameContainingIgnoreCase(keyword).stream()
+				.map(subject -> modelMapper.map(subject, SubjectResponseDTO.class))
+				.collect(Collectors.toList());
+	}
+
+	@Override
+	public void deleteSubject(Long id) {
+
+		logger.info("Request received to delete subject ID: {}", id);
+
+		SubjectEntity entity = subjectRepository.findById(id).orElseThrow(() -> {
+			logger.error("Subject not found with ID: {}", id);
+			return new ResourceNotFoundException("Subject not found");
+		});
+
+		entity.setStatus(Status.DELETED);
+		subjectRepository.save(entity);
+
+		logger.info("Subject deleted successfully with ID: {}", id);
+	}
+}

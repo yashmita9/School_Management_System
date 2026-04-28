@@ -1,0 +1,34 @@
+package com.erp.school.service;
+
+import java.util.List;
+
+import com.erp.school.dto.TeacherAssignmentRequestDTO;
+import com.erp.school.dto.TeacherAssignmentResponseDTO;
+import com.erp.school.entityenum.Status;
+
+/**
+ * Service interface for Teacher Assignment module.
+ * Handles teacher mapping with class, section and subject.
+ * 
+ * @author Yashmita Rathore
+ */
+public interface TeacherAssignmentServiceInt {
+
+	TeacherAssignmentResponseDTO assignTeacher(TeacherAssignmentRequestDTO dto);
+
+	TeacherAssignmentResponseDTO updateAssignment(Long id, TeacherAssignmentRequestDTO dto);
+
+	TeacherAssignmentResponseDTO getById(Long id);
+
+	List<TeacherAssignmentResponseDTO> getAll();
+
+	List<TeacherAssignmentResponseDTO> getByTeacher(Long teacherId);
+
+	List<TeacherAssignmentResponseDTO> getBySubject(Long subjectId);
+
+	void deleteAssignment(Long id);
+
+	List<TeacherAssignmentResponseDTO> getByClassAndSection(Long classId, Long sectionId);
+
+	TeacherAssignmentResponseDTO toggleStatus(Long id);
+}
