@@ -23,4 +23,6 @@ public interface EnquiryServiceInt {
 
 	PageResponseDTO<EnquiryResponseDTO> getEnquiries(int page, int size, String keyword, EnquiryStatus status,
 			String source, String classInterested);
+
+	String generateEnquiryCode();
 }

@@ -9,6 +9,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
@@ -29,6 +32,10 @@ public class StudentEntity extends BaseEntity {
 
 	@Column(name = "dob")
 	private LocalDate dob;
+	
+	@ManyToOne
+	@JoinColumn(name = "category_id")
+	private CategoryEntity category;
 
 	@Column(name = "gender")
 	private String gender;
@@ -43,8 +50,17 @@ public class StudentEntity extends BaseEntity {
 	@Column(name = "profile_pic")
 	private String profilePic;
 
-	@Column(name = "enquiry_id")
-	private Long enquiryId;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "enquiry_id")
+	private EnquiryEntity enquiry;
+	
+	public EnquiryEntity getEnquiry() {
+		return enquiry;
+	}
+
+	public void setEnquiry(EnquiryEntity enquiry) {
+		this.enquiry = enquiry;
+	}
 
 	public String getAdmissionNo() {
 		return admissionNo;
@@ -60,6 +76,16 @@ public class StudentEntity extends BaseEntity {
 
 	public void setStudentName(String studentName) {
 		this.studentName = studentName;
+	}
+	
+	
+
+	public CategoryEntity getCategory() {
+		return category;
+	}
+
+	public void setCategory(CategoryEntity category) {
+		this.category = category;
 	}
 
 	public String getMobile() {
@@ -118,12 +144,5 @@ public class StudentEntity extends BaseEntity {
 		this.profilePic = profilePic;
 	}
 
-	public Long getEnquiryId() {
-		return enquiryId;
-	}
-
-	public void setEnquiryId(Long enquiryId) {
-		this.enquiryId = enquiryId;
-	}
 
 }

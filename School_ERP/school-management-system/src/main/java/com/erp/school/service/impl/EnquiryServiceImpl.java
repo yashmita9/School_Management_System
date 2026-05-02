@@ -52,12 +52,19 @@ public class EnquiryServiceImpl implements EnquiryServiceInt {
 
 		EnquiryEntity entity = modelMapper.map(dto, EnquiryEntity.class);
 		entity.setStatus(EnquiryStatus.NEW);
+		entity.setEnquiryCode(generateEnquiryCode());
 
 		EnquiryEntity saved = enquiryRepository.save(entity);
 
 		logger.info("Enquiry created successfully with ID: {}", saved.getId());
 
 		return modelMapper.map(saved, EnquiryResponseDTO.class);
+	}
+
+	@Override
+	public String generateEnquiryCode() {
+	    long count = enquiryRepository.count() + 1;
+	    return "ENQ" + String.format("%03d", count);
 	}
 
 	/**
@@ -104,7 +111,7 @@ public class EnquiryServiceImpl implements EnquiryServiceInt {
 		EnquiryEntity entity = enquiryRepository.findById(id)
 				.orElseThrow(() -> new BadRequestException("Enquiry not found"));
 
-		entity.setStatus(EnquiryStatus.NOT_ADMITED);
+		entity.setStatus(EnquiryStatus.NOT_ADMITTED);
 
 		enquiryRepository.save(entity);
 

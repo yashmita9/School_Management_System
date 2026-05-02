@@ -55,10 +55,6 @@ public class ClassServiceImpl implements ClassServiceInt {
 		if (repo.existsByClassName(dto.getClassName())) {
 			throw new BadRequestException("Class already exists");
 		}
-		if (repo.existsByDisplayOrder(dto.getDisplayOrder())) {
-			throw new BadRequestException("Display order already exists");
-		}
-
 		// Class mapping via ModelMapper
 		ClassEntity entity = mapper.map(dto, ClassEntity.class);
 		entity.setStatus(Status.ACTIVE);
@@ -131,13 +127,8 @@ public class ClassServiceImpl implements ClassServiceInt {
 			throw new BadRequestException("Class already exists");
 		}
 
-		if (!entity.getDisplayOrder().equals(dto.getDisplayOrder())
-				&& repo.existsByDisplayOrder(dto.getDisplayOrder())) {
-			throw new BadRequestException("Display order already exists");
-		}
 		entity.setClassName(dto.getClassName());
 		entity.setDescription(dto.getDescription());
-		entity.setDisplayOrder(dto.getDisplayOrder());
 
 		entity.getSections().clear();
 		entity.getSections().addAll(mapSections(dto, entity));

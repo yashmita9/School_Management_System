@@ -1,5 +1,6 @@
 package com.erp.school.repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,7 +16,9 @@ public interface StudentRepository extends BaseRepository<StudentEntity, Long> {
 
     List<StudentEntity> findByStudentNameContainingIgnoreCase(String studentName);
 
-    Optional<StudentEntity> findByMobile(String mobile);
+    boolean existsByStudentNameAndDobAndMobile(String studentName, LocalDate dob, String mobile);
 
-    Optional<StudentEntity> findByEmail(String email);
+    Optional<StudentEntity> findByEnquiryEnquiryCode(String enquiryCode);
+
+	boolean existsByStudentNameAndDobAndMobileAndIdNot(String name, LocalDate dob, String mobile, Long id);
 }

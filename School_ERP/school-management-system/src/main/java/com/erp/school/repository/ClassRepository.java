@@ -11,7 +11,5 @@ public interface ClassRepository extends BaseRepository<ClassEntity, Long> {
 	boolean existsByClassName(String className);
 
 	List<ClassEntity> findByStatus(Status status);
-	
-	boolean existsByDisplayOrder(int displayOrder);
 
 }

@@ -9,6 +9,16 @@ public class EnquiryResponseDTO {
 	private String mobile;
 	private EnquiryStatus status;
 
+	private String enquiryCode;
+
+	public String getEnquiryCode() {
+		return enquiryCode;
+	}
+
+	public void setEnquiryCode(String enquiryCode) {
+		this.enquiryCode = enquiryCode;
+	}
+
 	public Long getId() {
 		return id;
 	}

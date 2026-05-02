@@ -1,31 +1,40 @@
 package com.erp.school.service.impl;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import com.erp.school.common.PageResponseDTO;
 import com.erp.school.dto.StudentRequestDTO;
 import com.erp.school.dto.StudentResponseDTO;
+import com.erp.school.entity.CategoryEntity;
+import com.erp.school.entity.EnquiryEntity;
 import com.erp.school.entity.StudentEntity;
+import com.erp.school.entityenum.EnquiryStatus;
 import com.erp.school.entityenum.StudentStatus;
 import com.erp.school.exception.BadRequestException;
+import com.erp.school.exception.DuplicateResourceException;
 import com.erp.school.exception.ResourceNotFoundException;
+import com.erp.school.repository.CategoryRepository;
+import com.erp.school.repository.EnquiryRepository;
 import com.erp.school.repository.StudentRepository;
 import com.erp.school.service.StudentServiceInt;
 
+import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/**
- * Service class for Student Master operations. Handles create, update, fetch,
- * delete and search.
- *
- * @author Yashmita Rathore
- */
 @Service
 @Transactional
 public class StudentServiceImpl implements StudentServiceInt {
@@ -36,30 +45,39 @@ public class StudentServiceImpl implements StudentServiceInt {
 	private StudentRepository studentRepository;
 
 	@Autowired
+	private EnquiryRepository enquiryRepository;
+
+	@Autowired
+	private CategoryRepository categoryRepository;
+
+	@Autowired
 	private ModelMapper modelMapper;
 
-	/**
-	 * Create new student.
-	 *
-	 * @param dto student data
-	 * @return saved student data
-	 */
+	// ================= CREATE =================
 	@Override
 	public StudentResponseDTO createStudent(StudentRequestDTO dto) {
 
 		logger.info("Request received to create student: {}", dto.getStudentName());
 
-		if (studentRepository.findByAdmissionNo(dto.getAdmissionNo()).isPresent()) {
+		// ✅ Duplicate Student Check (Correct Way)
+		boolean exists = studentRepository.existsByStudentNameAndDobAndMobile(dto.getStudentName().trim(), dto.getDob(),
+				dto.getMobile().trim());
 
-			logger.error("Student creation failed - Admission No already exists: {}", dto.getAdmissionNo());
-
-			throw new BadRequestException("Admission number already exists");
+		if (exists) {
+			throw new DuplicateResourceException("Student already exists with same name, DOB and mobile");
 		}
+
+		CategoryEntity category = categoryRepository.findById(dto.getCategoryId())
+				.orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
 		StudentEntity student = modelMapper.map(dto, StudentEntity.class);
 
+		student.setCategory(category);
+		student.setAdmissionDate(LocalDate.now());
+		student.setAdmissionNo(generateAdmissionNo());
 		student.setStatus(StudentStatus.ACTIVE);
 
+		// ✅ Save
 		StudentEntity savedStudent = studentRepository.save(student);
 
 		logger.info("Student created successfully with ID: {}", savedStudent.getId());
@@ -67,47 +85,25 @@ public class StudentServiceImpl implements StudentServiceInt {
 		return modelMapper.map(savedStudent, StudentResponseDTO.class);
 	}
 
-	/**
-	 * Get student by ID.
-	 *
-	 * @param id student ID
-	 * @return student data
-	 */
+	// ================= GET BY ID =================
 	@Override
 	public StudentResponseDTO getStudentById(Long id) {
 
-		logger.info("Request received to fetch student by ID: {}", id);
-
-		StudentEntity student = studentRepository.findById(id).orElseThrow(() -> {
-			logger.error("Student not found with ID: {}", id);
-
-			return new ResourceNotFoundException("Student not found");
-		});
+		StudentEntity student = studentRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Student not found"));
 
 		return modelMapper.map(student, StudentResponseDTO.class);
 	}
 
-	/**
-	 * Get all students.
-	 *
-	 * @return list of students
-	 */
+	// ================= GET ALL =================
 	@Override
 	public List<StudentResponseDTO> getAllStudents() {
-
-		logger.info("Request received to fetch all students");
 
 		return studentRepository.findAll().stream().map(student -> modelMapper.map(student, StudentResponseDTO.class))
 				.collect(Collectors.toList());
 	}
 
-	/**
-	 * Update student.
-	 *
-	 * @param id  student ID
-	 * @param dto updated data
-	 * @return updated student data
-	 */
+	// ================= UPDATE =================
 	@Override
 	public StudentResponseDTO updateStudent(Long id, StudentRequestDTO dto) {
 
@@ -115,79 +111,171 @@ public class StudentServiceImpl implements StudentServiceInt {
 
 		StudentEntity student = studentRepository.findById(id).orElseThrow(() -> {
 			logger.error("Update failed - Student not found with ID: {}", id);
-
 			return new ResourceNotFoundException("Student not found");
 		});
 
+		// ✅ Normalize input (important)
+		String name = dto.getStudentName() != null ? dto.getStudentName().trim() : "";
+		String mobile = dto.getMobile() != null ? dto.getMobile().trim() : "";
+
+		boolean exists = studentRepository.existsByStudentNameAndDobAndMobileAndIdNot(name, dto.getDob(), mobile, id);
+
+		if (exists) {
+			throw new DuplicateResourceException("Student already exists with same name, DOB and mobile");
+		}
+		CategoryEntity category = categoryRepository.findById(dto.getCategoryId())
+				.orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+
+		// ✅ Map updated values
 		modelMapper.map(dto, student);
+
+		student.setCategory(category);
+
+		// ❗ Important: admissionNo change nahi hona chahiye
+		// (ensure mapper overwrite na kare)
 
 		StudentEntity updatedStudent = studentRepository.save(student);
 
 		logger.info("Student updated successfully with ID: {}", updatedStudent.getId());
 
 		return modelMapper.map(updatedStudent, StudentResponseDTO.class);
-	}
+	} // ================= DELETE (SOFT) =================
 
-	/**
-	 * Soft delete student.
-	 *
-	 * @param id student ID
-	 */
 	@Override
 	public void deleteStudent(Long id) {
 
-		logger.info("Request received to delete student ID: {}", id);
-
-		StudentEntity student = studentRepository.findById(id).orElseThrow(() -> {
-			logger.error("Delete failed - Student not found with ID: {}", id);
-
-			return new ResourceNotFoundException("Student not found");
-		});
+		StudentEntity student = studentRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Student not found"));
 
 		student.setStatus(StudentStatus.INACTIVE);
 
 		studentRepository.save(student);
-
-		logger.info("Student marked inactive successfully with ID: {}", id);
 	}
 
-	/**
-	 * Search student by name.
-	 *
-	 * @param name student name
-	 * @return list
-	 */
+	// ================= SEARCH =================
 	@Override
 	public List<StudentResponseDTO> searchByName(String name) {
-
-		logger.info("Request received to search student by name: {}", name);
 
 		return studentRepository.findByStudentNameContainingIgnoreCase(name).stream()
 				.map(student -> modelMapper.map(student, StudentResponseDTO.class)).collect(Collectors.toList());
 	}
 
-	/**
-	 * Convert enquiry to student.
-	 *
-	 * @param enquiryId enquiry ID
-	 * @return saved student data
-	 */
+	// ================= CONVERT ENQUIRY =================
 	@Override
-	public StudentResponseDTO convertEnquiryToStudent(Long enquiryId) {
+	@Transactional
+	public StudentResponseDTO convertEnquiryToStudent(String code, StudentRequestDTO dto) {
 
-		logger.info("Request received to convert enquiry ID {} to student", enquiryId);
+		logger.info("Converting enquiry: {}", code);
+
+		EnquiryEntity enquiry = enquiryRepository.findByEnquiryCode(code)
+				.orElseThrow(() -> new ResourceNotFoundException("Enquiry not found"));
+
+		if (enquiry.getStatus() == EnquiryStatus.ADMITTED) {
+			throw new BadRequestException("Enquiry already converted");
+		}
+
+		if (studentRepository.findByEnquiryEnquiryCode(code).isPresent()) {
+			throw new BadRequestException("Student already created from this enquiry");
+		}
+
+		// ✅ Category fetch
+		CategoryEntity category = categoryRepository.findById(dto.getCategoryId())
+				.orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
 		StudentEntity student = new StudentEntity();
 
-		student.setEnquiryId(enquiryId);
+		// 🔹 Enquiry data
+		student.setStudentName(enquiry.getStudentName());
+		student.setMobile(enquiry.getMobile());
+		student.setEmail(enquiry.getEmail());
+
+		// 🔹 Extra data from DTO (IMPORTANT)
+		student.setDob(dto.getDob());
+		student.setGender(dto.getGender());
+		student.setCategory(category);
+
+		student.setAdmissionDate(LocalDate.now());
 		student.setStatus(StudentStatus.ACTIVE);
+		student.setAdmissionNo(generateAdmissionNo());
 
-		StudentEntity savedStudent = studentRepository.save(student);
+		student.setEnquiry(enquiry);
 
-		logger.info("Enquiry converted successfully to student ID: {}", savedStudent.getId());
+		StudentEntity saved = studentRepository.save(student);
 
-		return modelMapper.map(savedStudent, StudentResponseDTO.class);
+		// update enquiry
+		enquiry.setStatus(EnquiryStatus.ADMITTED);
+		enquiryRepository.save(enquiry);
+
+		return modelMapper.map(saved, StudentResponseDTO.class);
 	}
 
-	
+	private String generateAdmissionNo() {
+
+		int year = LocalDate.now().getYear();
+
+		long count = studentRepository.count() + 1;
+
+		return "ADM-" + year + "-" + String.format("%03d", count);
+	}
+
+	@Override
+	public PageResponseDTO<StudentResponseDTO> getStudents(int page, int size, String keyword, StudentStatus status,
+			Long categoryId, String gender) {
+
+		Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+
+		Specification<StudentEntity> spec = (root, query, cb) -> {
+
+			List<Predicate> predicates = new ArrayList<>();
+
+			// soft delete (agar BaseEntity me hai)
+			predicates.add(cb.isNull(root.get("deletedAt")));
+
+			// 🔍 keyword search
+			if (keyword != null && !keyword.trim().isEmpty()) {
+
+				String search = "%" + keyword.trim().toLowerCase() + "%";
+
+				Predicate p1 = cb.like(cb.lower(root.get("studentName")), search);
+				Predicate p2 = cb.like(cb.lower(root.get("email")), search);
+				Predicate p3 = cb.like(root.get("mobile"), "%" + keyword.trim() + "%");
+				Predicate p4 = cb.like(cb.lower(root.get("admissionNo")), search);
+
+				predicates.add(cb.or(p1, p2, p3, p4));
+			}
+
+			// 🎯 status filter
+			if (status != null) {
+				predicates.add(cb.equal(root.get("status"), status));
+			}
+
+			// 🎯 gender filter
+			if (gender != null && !gender.trim().isEmpty()) {
+				predicates.add(cb.equal(cb.lower(root.get("gender")), gender.trim().toLowerCase()));
+			}
+
+			// 🎯 category filter (relation)
+			if (categoryId != null) {
+				predicates.add(cb.equal(root.get("category").get("id"), categoryId));
+			}
+
+			return cb.and(predicates.toArray(new Predicate[0]));
+		};
+
+		Page<StudentEntity> studentPage = studentRepository.findAll(spec, pageable);
+
+		List<StudentResponseDTO> list = studentPage.getContent().stream()
+				.map(student -> modelMapper.map(student, StudentResponseDTO.class)).toList();
+
+		PageResponseDTO<StudentResponseDTO> response = new PageResponseDTO<>();
+
+		response.setContent(list);
+		response.setPage(studentPage.getNumber());
+		response.setSize(studentPage.getSize());
+		response.setTotalElements(studentPage.getTotalElements());
+		response.setTotalPages(studentPage.getTotalPages());
+		response.setLast(studentPage.isLast());
+
+		return response;
+	}
 }

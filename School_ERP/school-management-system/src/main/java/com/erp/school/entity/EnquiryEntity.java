@@ -12,6 +12,9 @@ public class EnquiryEntity extends BaseEntity {
 
 	@Column(name = "student_name")
 	private String studentName;
+	
+	@Column(name = "enquiry_code", unique = true)
+	private String enquiryCode;
 
 	@Column(name = "parents_name")
 	private String parentsName;
@@ -120,4 +123,13 @@ public class EnquiryEntity extends BaseEntity {
 	public void setRemarks(String remarks) {
 		this.remarks = remarks;
 	}
+
+	public String getEnquiryCode() {
+		return enquiryCode;
+	}
+
+	public void setEnquiryCode(String enquiryCode) {
+		this.enquiryCode = enquiryCode;
+	}
+	
 }

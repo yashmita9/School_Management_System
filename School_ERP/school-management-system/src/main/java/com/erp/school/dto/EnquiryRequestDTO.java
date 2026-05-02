@@ -78,7 +78,7 @@ public class EnquiryRequestDTO {
         this.mobile = mobile;
     }
 
-    public String getEmail() {
+	public String getEmail() {
         return email;
     }
 

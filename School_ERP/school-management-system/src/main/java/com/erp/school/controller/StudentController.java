@@ -1,17 +1,25 @@
 package com.erp.school.controller;
 
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.erp.school.common.ApiResponse;
+import com.erp.school.common.PageResponseDTO;
 import com.erp.school.dto.StudentRequestDTO;
 import com.erp.school.dto.StudentResponseDTO;
+import com.erp.school.entityenum.StudentStatus;
 import com.erp.school.service.StudentServiceInt;
 import com.erp.school.util.ValidationUtil;
 
@@ -74,13 +82,15 @@ public class StudentController {
 	 * @return list of students
 	 */
 	@GetMapping
-	public ResponseEntity<ApiResponse> getAllStudents() {
+	public ResponseEntity<ApiResponse> getAllStudents(@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size, @RequestParam(required = false) String keyword,
+			@RequestParam(required = false) StudentStatus status, @RequestParam(required = false) Long categoryId,
+			@RequestParam(required = false) String gender) {
 
 		logger.info("Fetch all students request received");
 
-		List<StudentResponseDTO> response = studentService.getAllStudents();
-
-		logger.info("Total students fetched: {}", response.size());
+		PageResponseDTO<StudentResponseDTO> response = studentService.getStudents(page, size, keyword, status,
+				categoryId, gender);
 
 		return ResponseEntity.ok(new ApiResponse(true, "Students fetched successfully", response));
 	}
@@ -155,15 +165,12 @@ public class StudentController {
 	 * @param enquiryId enquiry ID
 	 * @return created student from enquiry
 	 */
-	@PostMapping("/convert/{enquiryId}")
-	public ResponseEntity<ApiResponse> convertEnquiryToStudent(@PathVariable Long enquiryId) {
+	@PostMapping("/convert/{code}")
+	public ResponseEntity<ApiResponse> convertEnquiryToStudent(@PathVariable String code,
+			@RequestBody StudentRequestDTO dto) {
 
-		logger.info("Convert enquiry to student request received for enquiry ID: {}", enquiryId);
+		StudentResponseDTO response = studentService.convertEnquiryToStudent(code, dto);
 
-		StudentResponseDTO response = studentService.convertEnquiryToStudent(enquiryId);
-
-		logger.info("Enquiry converted successfully. Enquiry ID: {}", enquiryId);
-
-		return ResponseEntity.ok(new ApiResponse(true, "Enquiry converted to student successfully", response));
+		return ResponseEntity.ok(new ApiResponse(true, "Converted successfully", response));
 	}
 }

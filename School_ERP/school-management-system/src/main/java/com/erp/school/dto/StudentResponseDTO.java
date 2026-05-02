@@ -2,6 +2,8 @@ package com.erp.school.dto;
 
 import java.time.LocalDate;
 
+import com.erp.school.entity.EnquiryEntity;
+
 public class StudentResponseDTO {
 
 	private Long id;
@@ -14,6 +16,26 @@ public class StudentResponseDTO {
 	private LocalDate admissionDate;
 	private String status;
 	private String profilePic;
+	private EnquiryEntity enquiry;
+	
+	private Long categoryId;
+	private String categoryName;
+
+	public Long getCategoryId() {
+		return categoryId;
+	}
+
+	public void setCategoryId(Long categoryId) {
+		this.categoryId = categoryId;
+	}
+
+	public String getCategoryName() {
+		return categoryName;
+	}
+
+	public void setCategoryName(String categoryName) {
+		this.categoryName = categoryName;
+	}
 
 	public Long getId() {
 		return id;
@@ -94,5 +116,6 @@ public class StudentResponseDTO {
 	public void setProfilePic(String profilePic) {
 		this.profilePic = profilePic;
 	}
+
 
 }

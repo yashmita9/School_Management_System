@@ -2,8 +2,10 @@ package com.erp.school.service;
 
 import java.util.List;
 
+import com.erp.school.common.PageResponseDTO;
 import com.erp.school.dto.StudentRequestDTO;
 import com.erp.school.dto.StudentResponseDTO;
+import com.erp.school.entityenum.StudentStatus;
 
 public interface StudentServiceInt {
 
@@ -19,6 +21,9 @@ public interface StudentServiceInt {
 
 	List<StudentResponseDTO> searchByName(String name);
 
-	StudentResponseDTO convertEnquiryToStudent(Long enquiryId);
+	PageResponseDTO<StudentResponseDTO> getStudents(int page, int size, String keyword, StudentStatus status,
+			Long categoryId, String gender);
+
+	StudentResponseDTO convertEnquiryToStudent(String code, StudentRequestDTO dto);
 
 }

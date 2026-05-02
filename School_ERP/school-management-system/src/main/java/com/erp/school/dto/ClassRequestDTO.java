@@ -11,17 +11,7 @@ public class ClassRequestDTO {
 
 	private String description;
 
-	private Integer displayOrder;
-
 	private List<SectionRequestDTO> sections;
-
-	public Integer getDisplayOrder() {
-		return displayOrder;
-	}
-
-	public void setDisplayOrder(Integer displayOrder) {
-		this.displayOrder = displayOrder;
-	}
 
 	public List<SectionRequestDTO> getSections() {
 		return sections;

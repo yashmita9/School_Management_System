@@ -2,131 +2,106 @@ package com.erp.school.dto;
 
 import java.time.LocalDate;
 
+import com.erp.school.entity.EnquiryEntity;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
-import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public class StudentRequestDTO {
 
-    @NotBlank(message = "Admission number is required")
-    @Size(min = 3, max = 20, message = "Admission number must be between 3 to 20 characters")
-    @Pattern(
-        regexp = "^[A-Za-z0-9-]+$",
-        message = "Admission number can contain only letters, numbers and hyphen"
-    )
-    private String admissionNo;
+	@NotBlank(message = "Student name is required")
+	@Size(min = 2, max = 50, message = "Student name must be between 2 to 50 characters")
+	@Pattern(regexp = "^[A-Za-z ]+$", message = "Student name must contain only letters and spaces")
+	private String studentName;
 
-    @NotBlank(message = "Student name is required")
-    @Size(min = 2, max = 50, message = "Student name must be between 2 to 50 characters")
-    @Pattern(
-        regexp = "^[A-Za-z ]+$",
-        message = "Student name must contain only letters and spaces"
-    )
-    private String studentName;
+	@NotBlank(message = "Mobile number is required")
+	@Pattern(regexp = "^[6-9][0-9]{9}$", message = "Enter valid 10 digit mobile number")
+	private String mobile;
 
-    @NotBlank(message = "Mobile number is required")
-    @Pattern(
-        regexp = "^[6-9][0-9]{9}$",
-        message = "Enter valid 10 digit mobile number"
-    )
-    private String mobile;
+	@NotNull(message = "Category is required")
+	private Long categoryId;
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Enter valid email address")
-    private String email;
+	@NotBlank(message = "Email is required")
+	@Email(message = "Enter valid email address")
+	private String email;
 
-    @NotNull(message = "Date of birth is required")
-    @Past(message = "Date of birth must be past date")
-    private LocalDate dob;
+	@NotNull(message = "Date of birth is required")
+	@Past(message = "Date of birth must be past date")
+	private LocalDate dob;
 
-    @NotBlank(message = "Gender is required")
-    @Pattern(
-        regexp = "^(MALE|FEMALE|OTHER)$",
-        message = "Gender must be MALE, FEMALE or OTHER"
-    )
-    private String gender;
+	@NotBlank(message = "Gender is required")
+	@Pattern(regexp = "^(MALE|FEMALE|OTHER)$", message = "Gender must be MALE, FEMALE or OTHER")
+	private String gender;
 
-    @NotNull(message = "Admission date is required")
-    @PastOrPresent(message = "Admission date cannot be future date")
-    private LocalDate admissionDate;
+	private EnquiryEntity enquiry;
 
-    private String profilePic;
+	private String profilePic;
 
-    private Long enquiryId;
+	public EnquiryEntity getEnquiry() {
+		return enquiry;
+	}
 
-    public String getAdmissionNo() {
-        return admissionNo;
-    }
+	public void setEnquiry(EnquiryEntity enquiry) {
+		this.enquiry = enquiry;
+	}
 
-    public void setAdmissionNo(String admissionNo) {
-        this.admissionNo = admissionNo;
-    }
+	public String getStudentName() {
+		return studentName;
+	}
 
-    public String getStudentName() {
-        return studentName;
-    }
+	public void setStudentName(String studentName) {
+		this.studentName = studentName;
+	}
 
-    public void setStudentName(String studentName) {
-        this.studentName = studentName;
-    }
+	public String getMobile() {
+		return mobile;
+	}
 
-    public String getMobile() {
-        return mobile;
-    }
+	public void setMobile(String mobile) {
+		this.mobile = mobile;
+	}
 
-    public void setMobile(String mobile) {
-        this.mobile = mobile;
-    }
+	public String getEmail() {
+		return email;
+	}
 
-    public String getEmail() {
-        return email;
-    }
+	public void setEmail(String email) {
+		this.email = email;
+	}
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+	public LocalDate getDob() {
+		return dob;
+	}
 
-    public LocalDate getDob() {
-        return dob;
-    }
+	public void setDob(LocalDate dob) {
+		this.dob = dob;
+	}
 
-    public void setDob(LocalDate dob) {
-        this.dob = dob;
-    }
+	public String getGender() {
+		return gender;
+	}
 
-    public String getGender() {
-        return gender;
-    }
+	public void setGender(String gender) {
+		this.gender = gender;
+	}
 
-    public void setGender(String gender) {
-        this.gender = gender;
-    }
+	public String getProfilePic() {
+		return profilePic;
+	}
 
-    public LocalDate getAdmissionDate() {
-        return admissionDate;
-    }
+	public void setProfilePic(String profilePic) {
+		this.profilePic = profilePic;
+	}
 
-    public void setAdmissionDate(LocalDate admissionDate) {
-        this.admissionDate = admissionDate;
-    }
+	public Long getCategoryId() {
+		return categoryId;
+	}
 
-    public String getProfilePic() {
-        return profilePic;
-    }
-
-    public void setProfilePic(String profilePic) {
-        this.profilePic = profilePic;
-    }
-
-    public Long getEnquiryId() {
-        return enquiryId;
-    }
-
-    public void setEnquiryId(Long enquiryId) {
-        this.enquiryId = enquiryId;
-    }
+	public void setCategoryId(Long categoryId) {
+		this.categoryId = categoryId;
+	}
 }

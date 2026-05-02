@@ -26,8 +26,6 @@ public class ClassEntity extends BaseEntity {
 	@Enumerated(EnumType.STRING)
 	private Status status;
 
-	private Integer displayOrder;
-
 	@OneToMany(mappedBy = "classEntity", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<SectionEntity> sections = new ArrayList<>();
 
@@ -54,15 +52,7 @@ public class ClassEntity extends BaseEntity {
 	public void setStatus(Status status) {
 		this.status = status;
 	}
-
-	public Integer getDisplayOrder() {
-		return displayOrder;
-	}
-
-	public void setDisplayOrder(Integer displayOrder) {
-		this.displayOrder = displayOrder;
-	}
-
+	
 	public List<SectionEntity> getSections() {
 		return sections;
 	}
