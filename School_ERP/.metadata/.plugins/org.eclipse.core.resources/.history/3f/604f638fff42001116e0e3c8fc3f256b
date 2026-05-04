@@ -1,0 +1,5 @@
+package com.erp.school.service;
+
+public interface CategoryServiceInt {
+
+}

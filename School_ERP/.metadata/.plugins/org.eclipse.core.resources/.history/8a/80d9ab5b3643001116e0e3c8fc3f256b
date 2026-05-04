@@ -1,0 +1,23 @@
+package com.erp.school.repository;
+
+import java.util.List;
+import java.util.Optional;
+
+import com.erp.school.common.BaseRepository;
+import com.erp.school.entity.StudentEntity;
+import com.erp.school.entityenum.StudentStatus;
+
+public interface StudentRepository extends BaseRepository<StudentEntity, Long> {
+
+    Optional<StudentEntity> findByAdmissionNo(String admissionNo);
+
+    List<StudentEntity> findByStatus(StudentStatus status);
+
+    List<StudentEntity> findByStudentNameContainingIgnoreCase(String studentName);
+
+    Optional<StudentEntity> findByMobile(String mobile);
+
+    Optional<StudentEntity> findByEmail(String email);
+
+	boolean existsByMobile(String mobile);
+}

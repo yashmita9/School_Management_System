@@ -125,4 +125,21 @@ public class StudentEnrollmentController {
 
 		return ResponseEntity.ok(new ApiResponse(true, "Section transferred successfully", response));
 	}
+
+	// ================= BY CLASS + SECTION =================
+	@GetMapping("/class-section")
+	public ResponseEntity<ApiResponse> getStudentsByClassAndSection(@RequestParam Long classId,
+			@RequestParam Long sectionId) {
+
+		logger.info("Fetch students request for classId: {} and sectionId: {}", classId, sectionId);
+
+		List<StudentEnrollmentResponseDTO> response = studentEnrollmentService.getStudentsByClassAndSection(classId,
+				sectionId);
+
+		if (response.isEmpty()) {
+			return ResponseEntity.ok(new ApiResponse(true, "No students found for this class and section", response));
+		}
+
+		return ResponseEntity.ok(new ApiResponse(true, "Students fetched successfully", response));
+	}
 }

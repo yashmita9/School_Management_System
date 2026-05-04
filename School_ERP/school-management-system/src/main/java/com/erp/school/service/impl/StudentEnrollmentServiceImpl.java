@@ -244,4 +244,24 @@ public class StudentEnrollmentServiceImpl implements StudentEnrollmentServiceInt
 
 		return modelMapper.map(updatedEnrollment, StudentEnrollmentResponseDTO.class);
 	}
+	
+	@Override
+	public List<StudentEnrollmentResponseDTO> getStudentsByClassAndSection(Long classId, Long sectionId) {
+
+	    logger.info("Fetching students for classId: {} and sectionId: {}", classId, sectionId);
+
+	    AcademicYearEntity currentYear = academicYearRepository
+	            .findByCurrentYearTrue()
+	            .orElseThrow(() -> new ResourceNotFoundException("Current year not found"));
+
+	    return enrollmentRepository
+	            .findByClassEntityIdAndSectionEntityIdAndAcademicYearIdAndIsCurrentTrue(
+	                    classId,
+	                    sectionId,
+	                    currentYear.getId()
+	            )
+	            .stream()
+	            .map(data -> modelMapper.map(data, StudentEnrollmentResponseDTO.class))
+	            .collect(Collectors.toList());
+	}
 }

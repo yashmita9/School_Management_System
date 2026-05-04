@@ -1,0 +1,117 @@
+package com.erp.school.dto;
+
+import java.time.LocalDate;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
+public class StudentRequestDTO {
+
+    @NotBlank(message = "Student name is required")
+    @Size(min = 2, max = 50, message = "Student name must be between 2 to 50 characters")
+    @Pattern(
+        regexp = "^[A-Za-z ]+$",
+        message = "Student name must contain only letters and spaces"
+    )
+    private String studentName;
+
+    @NotBlank(message = "Mobile number is required")
+    @Pattern(
+        regexp = "^[6-9][0-9]{9}$",
+        message = "Enter valid 10 digit mobile number"
+    )
+    private String mobile;
+    
+    @NotNull(message = "Category is required")
+    private Long categoryId;
+
+    @NotBlank(message = "Email is required")
+    @Email(message = "Enter valid email address")
+    private String email;
+
+    @NotNull(message = "Date of birth is required")
+    @Past(message = "Date of birth must be past date")
+    private LocalDate dob;
+
+    @NotBlank(message = "Gender is required")
+    @Pattern(
+        regexp = "^(MALE|FEMALE|OTHER)$",
+        message = "Gender must be MALE, FEMALE or OTHER"
+    )
+    private String gender;
+    
+    private String profilePic;
+
+    private Long enquiryId;
+
+
+    public String getStudentName() {
+        return studentName;
+    }
+
+    public void setStudentName(String studentName) {
+        this.studentName = studentName;
+    }
+
+    public String getMobile() {
+        return mobile;
+    }
+
+    public void setMobile(String mobile) {
+        this.mobile = mobile;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public LocalDate getDob() {
+        return dob;
+    }
+
+    public void setDob(LocalDate dob) {
+        this.dob = dob;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+
+    public String getProfilePic() {
+        return profilePic;
+    }
+
+    public void setProfilePic(String profilePic) {
+        this.profilePic = profilePic;
+    }
+
+    public Long getEnquiryId() {
+        return enquiryId;
+    }
+
+    public void setEnquiryId(Long enquiryId) {
+        this.enquiryId = enquiryId;
+    }
+
+	public Long getCategoryId() {
+		return categoryId;
+	}
+
+	public void setCategoryId(Long categoryId) {
+		this.categoryId = categoryId;
+	}
+}

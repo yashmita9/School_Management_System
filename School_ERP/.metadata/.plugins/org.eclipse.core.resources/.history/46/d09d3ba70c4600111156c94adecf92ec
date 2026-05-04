@@ -1,0 +1,29 @@
+package com.erp.school.service;
+
+import java.util.List;
+
+import com.erp.school.common.PageResponseDTO;
+import com.erp.school.dto.StudentRequestDTO;
+import com.erp.school.dto.StudentResponseDTO;
+import com.erp.school.entityenum.StudentStatus;
+
+public interface StudentServiceInt {
+
+	StudentResponseDTO createStudent(StudentRequestDTO dto);
+
+	StudentResponseDTO getStudentById(Long id);
+
+	List<StudentResponseDTO> getAllStudents();
+
+	StudentResponseDTO updateStudent(Long id, StudentRequestDTO dto);
+
+	void deleteStudent(Long id);
+
+	List<StudentResponseDTO> searchByName(String name);
+
+	PageResponseDTO<StudentResponseDTO> getStudents(int page, int size, String keyword, StudentStatus status,
+			Long categoryId, String gender);
+
+	StudentResponseDTO convertEnquiryToStudent(String code);
+
+}

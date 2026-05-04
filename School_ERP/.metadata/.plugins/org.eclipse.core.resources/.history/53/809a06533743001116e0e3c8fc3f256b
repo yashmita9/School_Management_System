@@ -1,0 +1,214 @@
+package com.erp.school.service.impl;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.modelmapper.ModelMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.erp.school.dto.StudentRequestDTO;
+import com.erp.school.dto.StudentResponseDTO;
+import com.erp.school.entity.CategoryEntity;
+import com.erp.school.entity.StudentEntity;
+import com.erp.school.entityenum.StudentStatus;
+import com.erp.school.exception.DuplicateResourceException;
+import com.erp.school.exception.ResourceNotFoundException;
+import com.erp.school.repository.CategoryRepository;
+import com.erp.school.repository.StudentRepository;
+import com.erp.school.service.StudentServiceInt;
+
+import jakarta.transaction.Transactional;
+
+/**
+ * Service class for Student Master operations. Handles create, update, fetch,
+ * delete and search.
+ *
+ * @author Yashmita Rathore
+ */
+@Service
+@Transactional
+public class StudentServiceImpl implements StudentServiceInt {
+
+	private static final Logger logger = LoggerFactory.getLogger(StudentServiceImpl.class);
+
+	@Autowired
+	private StudentRepository studentRepository;
+
+	@Autowired
+	private CategoryRepository categoryRepository;
+
+	@Autowired
+	private ModelMapper modelMapper;
+
+	/**
+	 * Create new student.
+	 *
+	 * @param dto student data
+	 * @return saved student data
+	 */
+	@Override
+	public StudentResponseDTO createStudent(StudentRequestDTO dto) {
+
+		logger.info("Request received to create student: {}", dto.getStudentName());
+
+		// Duplicate Mobile Check
+		if (studentRepository.existsByMobile(dto.getMobile())) {
+			throw new DuplicateResourceException("Mobile number already exists");
+		}
+
+		CategoryEntity category = categoryRepository.findById(dto.getCategoryId())
+				.orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+
+		StudentEntity student = modelMapper.map(dto, StudentEntity.class);
+
+		student.setCategory(category);
+		student.setAdmissionDate(LocalDate.now());
+		student.setAdmissionNo(generateAdmissionNo());
+		student.setStatus(StudentStatus.ACTIVE);
+
+		StudentEntity savedStudent = studentRepository.save(student);
+
+		logger.info("Student created successfully with ID: {}", savedStudent.getId());
+
+		return modelMapper.map(savedStudent, StudentResponseDTO.class);
+	}
+
+	private String generateAdmissionNo() {
+
+		int year = LocalDate.now().getYear();
+
+		long count = studentRepository.count() + 1;
+
+		return "ADM-" + year + "-" + String.format("%03d", count);
+	}
+
+	/**
+	 * Get student by ID.
+	 *
+	 * @param id student ID
+	 * @return student data
+	 */
+	@Override
+	public StudentResponseDTO getStudentById(Long id) {
+
+		logger.info("Request received to fetch student by ID: {}", id);
+
+		StudentEntity student = studentRepository.findById(id).orElseThrow(() -> {
+			logger.error("Student not found with ID: {}", id);
+
+			return new ResourceNotFoundException("Student not found");
+		});
+
+		return modelMapper.map(student, StudentResponseDTO.class);
+	}
+
+	/**
+	 * Get all students.
+	 *
+	 * @return list of students
+	 */
+	@Override
+	public List<StudentResponseDTO> getAllStudents() {
+
+		logger.info("Request received to fetch all students");
+
+		return studentRepository.findAll().stream().map(student -> modelMapper.map(student, StudentResponseDTO.class))
+				.collect(Collectors.toList());
+	}
+
+	/**
+	 * Update student.
+	 *
+	 * @param id  student ID
+	 * @param dto updated data
+	 * @return updated student data
+	 */
+	@Override
+	public StudentResponseDTO updateStudent(Long id, StudentRequestDTO dto) {
+
+		logger.info("Request received to update student ID: {}", id);
+
+		StudentEntity student = studentRepository.findById(id).orElseThrow(() -> {
+			logger.error("Update failed - Student not found with ID: {}", id);
+
+			return new ResourceNotFoundException("Student not found");
+		});
+
+		CategoryEntity category = categoryRepository.findById(dto.getCategoryId())
+				.orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+
+		modelMapper.map(dto, student);
+
+		StudentEntity updatedStudent = studentRepository.save(student);
+
+		logger.info("Student updated successfully with ID: {}", updatedStudent.getId());
+
+		return modelMapper.map(updatedStudent, StudentResponseDTO.class);
+	}
+
+	/**
+	 * Soft delete student.
+	 *
+	 * @param id student ID
+	 */
+	@Override
+	public void deleteStudent(Long id) {
+
+		logger.info("Request received to delete student ID: {}", id);
+
+		StudentEntity student = studentRepository.findById(id).orElseThrow(() -> {
+			logger.error("Delete failed - Student not found with ID: {}", id);
+
+			return new ResourceNotFoundException("Student not found");
+		});
+
+		student.setStatus(StudentStatus.INACTIVE);
+
+		studentRepository.save(student);
+
+		logger.info("Student marked inactive successfully with ID: {}", id);
+	}
+
+	/**
+	 * Search student by name.
+	 *
+	 * @param name student name
+	 * @return list
+	 */
+	@Override
+	public List<StudentResponseDTO> searchByName(String name) {
+
+		logger.info("Request received to search student by name: {}", name);
+
+		return studentRepository.findByStudentNameContainingIgnoreCase(name).stream()
+				.map(student -> modelMapper.map(student, StudentResponseDTO.class)).collect(Collectors.toList());
+	}
+
+	/**
+	 * Convert enquiry to student.
+	 *
+	 * @param enquiryId enquiry ID
+	 * @return saved student data
+	 */
+	@Override
+	public StudentResponseDTO convertEnquiryToStudent(Long enquiryId) {
+
+		logger.info("Request received to convert enquiry ID {} to student", enquiryId);
+
+		StudentEntity student = new StudentEntity();
+
+		student.setEnquiryId(enquiryId);
+		student.setStatus(StudentStatus.ACTIVE);
+
+		StudentEntity savedStudent = studentRepository.save(student);
+
+		logger.info("Enquiry converted successfully to student ID: {}", savedStudent.getId());
+
+		return modelMapper.map(savedStudent, StudentResponseDTO.class);
+	}
+
+}

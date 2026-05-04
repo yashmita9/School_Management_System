@@ -1,0 +1,8 @@
+package com.erp.school.repository;
+
+import com.erp.school.common.BaseRepository;
+import com.erp.school.entity.CategoryEntity;
+
+public interface CategoryRepository extends BaseRepository<CategoryEntity, Long>{
+
+}

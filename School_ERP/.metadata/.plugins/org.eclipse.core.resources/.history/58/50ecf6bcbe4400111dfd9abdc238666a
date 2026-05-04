@@ -1,0 +1,216 @@
+package com.erp.school.service.impl;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+
+import com.erp.school.common.PageResponseDTO;
+import com.erp.school.dto.EnquiryRequestDTO;
+import com.erp.school.dto.EnquiryResponseDTO;
+import com.erp.school.entity.EnquiryEntity;
+import com.erp.school.entityenum.EnquiryStatus;
+import com.erp.school.exception.BadRequestException;
+import com.erp.school.repository.EnquiryRepository;
+import com.erp.school.service.EnquiryServiceInt;
+
+import jakarta.persistence.criteria.Predicate;
+import jakarta.transaction.Transactional;
+
+/**
+ * Service implementation for enquiry management.
+ */
+@Service
+@Transactional
+public class EnquiryServiceImpl implements EnquiryServiceInt {
+
+	private static final Logger logger = LogManager.getLogger(EnquiryServiceImpl.class);
+
+	@Autowired
+	private EnquiryRepository enquiryRepository;
+
+	@Autowired
+	private ModelMapper modelMapper;
+
+	/**
+	 * Create enquiry.
+	 */
+	@Override
+	public EnquiryResponseDTO create(EnquiryRequestDTO dto) {
+
+		logger.info("Create enquiry request received");
+
+		EnquiryEntity entity = modelMapper.map(dto, EnquiryEntity.class);
+		entity.setStatus(EnquiryStatus.NEW);
+
+		EnquiryEntity saved = enquiryRepository.save(entity);
+
+		logger.info("Enquiry created successfully with ID: {}", saved.getId());
+
+		return modelMapper.map(saved, EnquiryResponseDTO.class);
+	}
+
+	public String generateEnquiryCode() {
+		return "ENQ" + System.currentTimeMillis();
+	}
+
+	/**
+	 * Get enquiry by id.
+	 */
+	public EnquiryResponseDTO getById(Long id) {
+
+		logger.info("Fetch enquiry request for ID: {}", id);
+
+		EnquiryEntity entity = enquiryRepository.findById(id)
+				.orElseThrow(() -> new BadRequestException("Enquiry not found"));
+
+		return modelMapper.map(entity, EnquiryResponseDTO.class);
+	}
+
+	/**
+	 * Update enquiry.
+	 */
+	@Override
+	public EnquiryResponseDTO update(Long id, EnquiryRequestDTO dto) {
+
+		logger.info("Update enquiry request for ID: {}", id);
+
+		EnquiryEntity entity = enquiryRepository.findById(id)
+				.orElseThrow(() -> new BadRequestException("Enquiry not found"));
+
+		modelMapper.map(dto, entity);
+
+		EnquiryEntity updated = enquiryRepository.save(entity);
+
+		logger.info("Enquiry updated successfully for ID: {}", id);
+
+		return modelMapper.map(updated, EnquiryResponseDTO.class);
+	}
+
+	/**
+	 * Soft delete enquiry.
+	 */
+	@Override
+	public void deleteEnquiry(Long id) {
+
+		logger.info("Delete enquiry request for ID: {}", id);
+
+		EnquiryEntity entity = enquiryRepository.findById(id)
+				.orElseThrow(() -> new BadRequestException("Enquiry not found"));
+
+		entity.setStatus(EnquiryStatus.NOT_ADMITED);
+
+		enquiryRepository.save(entity);
+
+		logger.info("Enquiry marked as LOST for ID: {}", id);
+	}
+
+	/**
+	 * Update enquiry status.
+	 */
+	@Override
+	public EnquiryResponseDTO updateStatus(Long id, EnquiryStatus status) {
+
+		logger.info("Status update request for ID: {}, Status: {}", id, status);
+
+		EnquiryEntity entity = enquiryRepository.findById(id)
+				.orElseThrow(() -> new BadRequestException("Enquiry not found"));
+
+		entity.setStatus(status);
+
+		EnquiryEntity updated = enquiryRepository.save(entity);
+
+		logger.info("Enquiry status updated successfully for ID: {}", id);
+
+		return modelMapper.map(updated, EnquiryResponseDTO.class);
+	}
+
+	/**
+	 * Get enquiries by status.
+	 */
+	@Override
+	public List<EnquiryResponseDTO> getByStatus(EnquiryStatus status) {
+
+		logger.info("Fetch enquiries by status: {}", status);
+
+		List<EnquiryEntity> list = enquiryRepository.findByStatus(status);
+
+		return list.stream().map(entity -> modelMapper.map(entity, EnquiryResponseDTO.class))
+				.collect(Collectors.toList());
+	}
+
+	@Override
+	public PageResponseDTO<EnquiryResponseDTO> getEnquiries(int page, int size, String keyword, EnquiryStatus status,
+			String source, String classInterested) {
+
+		Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+
+		Specification<EnquiryEntity> spec = (root, query, cb) -> {
+
+			List<Predicate> predicates = new ArrayList<>();
+
+			// soft delete hide
+			predicates.add(cb.isNull(root.get("deletedAt")));
+
+			// keyword search
+			if (keyword != null && !keyword.trim().isEmpty()) {
+
+				String search = "%" + keyword.trim().toLowerCase() + "%";
+
+				Predicate p1 = cb.like(cb.lower(root.get("studentName")), search);
+
+				Predicate p2 = cb.like(cb.lower(root.get("parentsName")), search);
+
+				Predicate p3 = cb.like(cb.lower(root.get("email")), search);
+
+				Predicate p4 = cb.like(root.get("mobile"), "%" + keyword.trim() + "%");
+
+				predicates.add(cb.or(p1, p2, p3, p4));
+			}
+
+			// status filter
+			if (status != null) {
+				predicates.add(cb.equal(root.get("status"), status));
+			}
+
+			// source filter
+			if (source != null && !source.trim().isEmpty()) {
+				predicates.add(cb.equal(cb.lower(root.get("source")), source.trim().toLowerCase()));
+			}
+
+			// classInterested filter
+			if (classInterested != null && !classInterested.trim().isEmpty()) {
+
+				predicates.add(cb.equal(cb.lower(root.get("classInterested")), classInterested.trim().toLowerCase()));
+			}
+
+			return cb.and(predicates.toArray(new Predicate[0]));
+		};
+
+		Page<EnquiryEntity> enquiryPage = enquiryRepository.findAll(spec, pageable);
+
+		List<EnquiryResponseDTO> list = enquiryPage.getContent().stream()
+				.map(enquiry -> modelMapper.map(enquiry, EnquiryResponseDTO.class)).toList();
+
+		PageResponseDTO<EnquiryResponseDTO> response = new PageResponseDTO<>();
+
+		response.setContent(list);
+		response.setPage(enquiryPage.getNumber());
+		response.setSize(enquiryPage.getSize());
+		response.setTotalElements(enquiryPage.getTotalElements());
+		response.setTotalPages(enquiryPage.getTotalPages());
+		response.setLast(enquiryPage.isLast());
+
+		return response;
+	}
+}

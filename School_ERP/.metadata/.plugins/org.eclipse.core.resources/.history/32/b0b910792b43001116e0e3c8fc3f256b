@@ -1,0 +1,128 @@
+package com.erp.school.service.impl;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.erp.school.dto.CategoryRequestDTO;
+import com.erp.school.dto.CategoryResponseDTO;
+import com.erp.school.entity.CategoryEntity;
+import com.erp.school.entityenum.Status;
+import com.erp.school.exception.DuplicateResourceException;
+import com.erp.school.exception.ResourceNotFoundException;
+import com.erp.school.repository.CategoryRepository;
+import com.erp.school.service.CategoryServiceInt;
+
+import jakarta.transaction.Transactional;
+
+@Service
+@Transactional
+public class CategoryServiceImpl implements CategoryServiceInt {
+
+	@Autowired
+	private CategoryRepository categoryRepository;
+
+	@Autowired
+	private ModelMapper modelMapper;
+
+	@Override
+	public CategoryResponseDTO create(CategoryRequestDTO dto) {
+		if (categoryRepository.existsByNameIgnoreCase(dto.getName())) {
+			throw new DuplicateResourceException("Category name already exists");
+		}
+
+		if (categoryRepository.existsByCodeIgnoreCase(dto.getCode())) {
+			throw new DuplicateResourceException("Category code already exists");
+		}
+
+		CategoryEntity entity = modelMapper.map(dto, CategoryEntity.class);
+
+		CategoryEntity saved = categoryRepository.save(entity);
+
+		return modelMapper.map(saved, CategoryResponseDTO.class);
+
+	}
+
+	@Override
+	public CategoryResponseDTO update(Long id, CategoryRequestDTO dto) {
+		CategoryEntity entity = categoryRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+
+		if(categoryRepository.existsByCodeIgnoreCaseAndIdNot(dto.getCode(), id)) {
+		    throw new DuplicateResourceException("Category code already exists");
+		}
+
+		if(categoryRepository.existsByNameIgnoreCaseAndIdNot(dto.getName(), id)) {
+		    throw new DuplicateResourceException("Category name already exists");
+		}
+
+		modelMapper.map(dto, entity);
+
+		CategoryEntity updated = categoryRepository.save(entity);
+
+		return modelMapper.map(updated, CategoryResponseDTO.class);
+
+	}
+
+	@Override
+	public CategoryResponseDTO findById(Long id) {
+		CategoryEntity entity = categoryRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+
+		return modelMapper.map(entity, CategoryResponseDTO.class);
+
+	}
+
+	@Override
+	public List<CategoryResponseDTO> findAll() {
+		// TODO Auto-generated method stub
+		return categoryRepository.findAll().stream().map(data -> modelMapper.map(data, CategoryResponseDTO.class))
+				.collect(Collectors.toList());
+	}
+
+	@Override
+	public List<CategoryResponseDTO> findAllActive() {
+		return categoryRepository.findByStatusOrderByNameAsc(Status.ACTIVE).stream()
+				.map(data -> modelMapper.map(data, CategoryResponseDTO.class)).toList();
+
+	}
+
+	@Override
+	public void delete(Long id) {
+
+		CategoryEntity entity = categoryRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+
+		entity.setStatus(Status.DELETED);
+
+		entity.setDeletedAt(LocalDateTime.now());
+
+		categoryRepository.save(entity);
+	}
+	
+	@Override
+	public CategoryResponseDTO toggleStatus(Long id) {
+
+		CategoryEntity entity = categoryRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+
+		if (entity.getStatus() == Status.DELETED) {
+			throw new RuntimeException("Deleted category cannot be changed");
+		}
+
+		if (entity.getStatus() == Status.ACTIVE) {
+			entity.setStatus(Status.INACTIVE);
+		} else {
+			entity.setStatus(Status.ACTIVE);
+		}
+
+		CategoryEntity updated = categoryRepository.save(entity);
+
+		return modelMapper.map(updated, CategoryResponseDTO.class);
+	}
+
+}

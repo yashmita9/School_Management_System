@@ -129,7 +129,7 @@ public class UserController {
 	 * Soft delete user.
 	 */
 	@DeleteMapping(AppConstants.USER_BY_ID)
-	public ResponseEntity<ApiResponse> softDetele(@PathVariable Long id) {
+	public ResponseEntity<ApiResponse> softDelete(@PathVariable Long id) {
 
 		logger.info("Delete user request for id: {}", id);
 
@@ -167,12 +167,12 @@ public class UserController {
 	 * Get logged-in user profile.
 	 */
 	@GetMapping(AppConstants.USER_PROFILE)
-	public ResponseEntity<UserResponseDTO> getProfile() {
+	public ResponseEntity<ApiResponse> getProfile() {
 
 		logger.info("Get profile request received");
 
 		UserResponseDTO user = userService.getProfile();
 
-		return ResponseEntity.ok(user);
+		return ResponseEntity.ok(new ApiResponse(true, "Profile fetched", user));
 	}
 }

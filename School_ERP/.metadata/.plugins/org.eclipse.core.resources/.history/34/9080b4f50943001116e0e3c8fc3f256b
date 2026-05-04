@@ -1,0 +1,19 @@
+package com.erp.school.repository;
+
+import java.util.Optional;
+
+import com.erp.school.common.BaseRepository;
+import com.erp.school.entity.CategoryEntity;
+
+public interface CategoryRepository extends BaseRepository<CategoryEntity, Long>{
+	
+	Optional<CategoryEntity> findByNameIgnoreCase(String name);
+	
+	Optional<CategoryEntity> findByCodeIgnoreCase(String code);
+	
+	boolean existsByNameIgnoreCase(String name);
+	
+	boolean existsByCodeIgnoreCase(String code);
+	
+
+}

@@ -1,0 +1,114 @@
+package com.erp.school.controller;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.erp.school.common.ApiResponse;
+import com.erp.school.dto.CategoryRequestDTO;
+import com.erp.school.dto.CategoryResponseDTO;
+import com.erp.school.entityenum.Status;
+import com.erp.school.service.CategoryServiceInt;
+import com.erp.school.util.ValidationUtil;
+
+import jakarta.validation.Valid;
+
+/**
+ * Controller for Category Module APIs.
+ * 
+ * @author Yashmita Rathore
+ */
+@RestController
+@RequestMapping("/api/categories")
+public class CategoryController {
+
+	private static final Logger logger = LoggerFactory.getLogger(CategoryController.class);
+
+	@Autowired
+	private CategoryServiceInt categoryService;
+
+	@Autowired
+	private ValidationUtil validationUtil;
+
+	@PostMapping
+	public ResponseEntity<ApiResponse> add(@Valid @RequestBody CategoryRequestDTO dto, BindingResult bindingResult) {
+
+		logger.info("Add category request received");
+
+		ApiResponse validationResponse = validationUtil.validate(bindingResult);
+
+		if (!validationResponse.isSuccess()) {
+			return ResponseEntity.badRequest().body(validationResponse);
+		}
+
+		CategoryResponseDTO response = categoryService.create(dto);
+
+		return ResponseEntity.ok(new ApiResponse(true, "Category added successfully", response));
+	}
+
+	@PutMapping("/{id}")
+	public ResponseEntity<ApiResponse> update(@PathVariable Long id, @Valid @RequestBody CategoryRequestDTO dto,
+			BindingResult bindingResult) {
+
+		logger.info("Update category request received for ID: {}", id);
+
+		ApiResponse validationResponse = validationUtil.validate(bindingResult);
+
+		if (!validationResponse.isSuccess()) {
+			return ResponseEntity.badRequest().body(validationResponse);
+		}
+
+		CategoryResponseDTO response = categoryService.update(id, dto);
+
+		return ResponseEntity.ok(new ApiResponse(true, "Category updated successfully", response));
+	}
+
+	@GetMapping("/{id}")
+	public ResponseEntity<ApiResponse> getById(@PathVariable Long id) {
+
+		CategoryResponseDTO response = categoryService.findById(id);
+
+		return ResponseEntity.ok(new ApiResponse(true, "Category fetched successfully", response));
+	}
+
+	@GetMapping
+	public ResponseEntity<ApiResponse> getAll() {
+
+		return ResponseEntity.ok(new ApiResponse(true, "Categories fetched successfully", categoryService.findAll()));
+	}
+
+	@GetMapping("/active")
+	public ResponseEntity<ApiResponse> getAllActive() {
+
+		return ResponseEntity
+				.ok(new ApiResponse(true, "Active categories fetched successfully", categoryService.findAllActive()));
+	}
+
+	@DeleteMapping("/{id}")
+	public ResponseEntity<ApiResponse> deleteCategory(@PathVariable Long id) {
+
+		categoryService.delete(id);
+
+		return ResponseEntity.ok(new ApiResponse(true, "Category deleted successfully", null));
+	}
+
+	@PatchMapping("/{id}/status")
+	public ResponseEntity<ApiResponse> updateStatus(@PathVariable Long id) {
+
+		CategoryResponseDTO response = categoryService.toggleStatus(id);
+
+		return ResponseEntity.ok(new ApiResponse(true, "Status updated successfully", response));
+	}
+}

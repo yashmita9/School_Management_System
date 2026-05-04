@@ -1,0 +1,5 @@
+package com.erp.school.service.impl;
+
+public class CategoryServiceImpl {
+
+}

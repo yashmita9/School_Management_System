@@ -1,0 +1,266 @@
+package com.erp.school.service.impl;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.modelmapper.ModelMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+
+import com.erp.school.common.PageResponseDTO;
+import com.erp.school.dto.StudentRequestDTO;
+import com.erp.school.dto.StudentResponseDTO;
+import com.erp.school.entity.CategoryEntity;
+import com.erp.school.entity.EnquiryEntity;
+import com.erp.school.entity.StudentEntity;
+import com.erp.school.entityenum.EnquiryStatus;
+import com.erp.school.entityenum.StudentStatus;
+import com.erp.school.exception.BadRequestException;
+import com.erp.school.exception.DuplicateResourceException;
+import com.erp.school.exception.ResourceNotFoundException;
+import com.erp.school.repository.CategoryRepository;
+import com.erp.school.repository.EnquiryRepository;
+import com.erp.school.repository.StudentRepository;
+import com.erp.school.service.StudentServiceInt;
+
+import jakarta.persistence.criteria.Predicate;
+import jakarta.transaction.Transactional;
+
+@Service
+@Transactional
+public class StudentServiceImpl implements StudentServiceInt {
+
+	private static final Logger logger = LoggerFactory.getLogger(StudentServiceImpl.class);
+
+	@Autowired
+	private StudentRepository studentRepository;
+
+	@Autowired
+	private EnquiryRepository enquiryRepository;
+
+	@Autowired
+	private CategoryRepository categoryRepository;
+
+	@Autowired
+	private ModelMapper modelMapper;
+
+	// ================= CREATE =================
+	@Override
+	public StudentResponseDTO createStudent(StudentRequestDTO dto) {
+
+		logger.info("Request received to create student: {}", dto.getStudentName());
+
+		// Duplicate Mobile Check
+		if (studentRepository.existsByMobile(dto.getMobile())) {
+			throw new DuplicateResourceException("Mobile number already exists");
+		}
+
+		// Duplicate Email Check
+		if (studentRepository.existsByEmailIgnoreCase(dto.getEmail())) {
+			throw new DuplicateResourceException("Email already exists");
+		}
+
+		CategoryEntity category = categoryRepository.findById(dto.getCategoryId())
+				.orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+
+		StudentEntity student = modelMapper.map(dto, StudentEntity.class);
+
+		student.setCategory(category);
+		student.setAdmissionDate(LocalDate.now());
+		student.setAdmissionNo(generateAdmissionNo());
+		student.setStatus(StudentStatus.ACTIVE);
+
+		StudentEntity savedStudent = studentRepository.save(student);
+
+		logger.info("Student created successfully with ID: {}", savedStudent.getId());
+
+		return modelMapper.map(savedStudent, StudentResponseDTO.class);
+	}
+
+	// ================= GET BY ID =================
+	@Override
+	public StudentResponseDTO getStudentById(Long id) {
+
+		StudentEntity student = studentRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+
+		return modelMapper.map(student, StudentResponseDTO.class);
+	}
+
+	// ================= GET ALL =================
+	@Override
+	public List<StudentResponseDTO> getAllStudents() {
+
+		return studentRepository.findAll().stream().map(student -> modelMapper.map(student, StudentResponseDTO.class))
+				.collect(Collectors.toList());
+	}
+
+	// ================= UPDATE =================
+	@Override
+	public StudentResponseDTO updateStudent(Long id, StudentRequestDTO dto) {
+
+		logger.info("Request received to update student ID: {}", id);
+
+		StudentEntity student = studentRepository.findById(id).orElseThrow(() -> {
+			logger.error("Update failed - Student not found with ID: {}", id);
+			return new ResourceNotFoundException("Student not found");
+		});
+
+		// Duplicate Mobile Check (other record)
+		if (studentRepository.existsByMobileAndIdNot(dto.getMobile().trim(), id)) {
+			throw new DuplicateResourceException("Mobile number already exists");
+		}
+
+		// Duplicate Email Check (other record)
+		if (dto.getEmail() != null && !dto.getEmail().trim().isEmpty()
+				&& studentRepository.existsByEmailIgnoreCaseAndIdNot(dto.getEmail().trim(), id)) {
+			throw new DuplicateResourceException("Email already exists");
+		}
+
+		CategoryEntity category = categoryRepository.findById(dto.getCategoryId())
+				.orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+
+		modelMapper.map(dto, student);
+
+		student.setCategory(category);
+
+		StudentEntity updatedStudent = studentRepository.save(student);
+
+		logger.info("Student updated successfully with ID: {}", updatedStudent.getId());
+
+		return modelMapper.map(updatedStudent, StudentResponseDTO.class);
+	}
+
+	// ================= DELETE (SOFT) =================
+	@Override
+	public void deleteStudent(Long id) {
+
+		StudentEntity student = studentRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+
+		student.setStatus(StudentStatus.INACTIVE);
+
+		studentRepository.save(student);
+	}
+
+	// ================= SEARCH =================
+	@Override
+	public List<StudentResponseDTO> searchByName(String name) {
+
+		return studentRepository.findByStudentNameContainingIgnoreCase(name).stream()
+				.map(student -> modelMapper.map(student, StudentResponseDTO.class)).collect(Collectors.toList());
+	}
+
+	// ================= CONVERT ENQUIRY =================
+	@Override
+	public StudentResponseDTO convertEnquiryToStudent(String code) {
+
+		logger.info("Converting enquiry: {}", code);
+
+		EnquiryEntity enquiry = enquiryRepository.findByEnquiryCode(code)
+				.orElseThrow(() -> new ResourceNotFoundException("Enquiry not found"));
+
+		if (enquiry.getStatus() == EnquiryStatus.ADMITED) {
+			throw new BadRequestException("Enquiry already converted");
+		}
+
+		// ⚠️ Manual mapping (important business logic)
+		StudentEntity student = new StudentEntity();
+		student.setStudentName(enquiry.getStudentName());
+		student.setMobile(enquiry.getMobile());
+		student.setEmail(enquiry.getEmail());
+
+		student.setAdmissionDate(LocalDate.now());
+		student.setStatus(StudentStatus.ACTIVE);
+		student.setAdmissionNo(generateAdmissionNo());
+
+		student.setEnquiry(enquiry);
+
+		StudentEntity saved = studentRepository.save(student);
+
+		// update enquiry
+		enquiry.setStatus(EnquiryStatus.ADMITED);
+		enquiryRepository.save(enquiry);
+
+		return modelMapper.map(saved, StudentResponseDTO.class);
+	}
+
+	private String generateAdmissionNo() {
+
+		int year = LocalDate.now().getYear();
+
+		long count = studentRepository.count() + 1;
+
+		return "ADM-" + year + "-" + String.format("%03d", count);
+	}
+
+	@Override
+	public PageResponseDTO<StudentResponseDTO> getStudents(int page, int size, String keyword, StudentStatus status,
+			Long categoryId, String gender) {
+
+		Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+
+		Specification<StudentEntity> spec = (root, query, cb) -> {
+
+			List<Predicate> predicates = new ArrayList<>();
+
+			// soft delete (agar BaseEntity me hai)
+			predicates.add(cb.isNull(root.get("deletedAt")));
+
+			// 🔍 keyword search
+			if (keyword != null && !keyword.trim().isEmpty()) {
+
+				String search = "%" + keyword.trim().toLowerCase() + "%";
+
+				Predicate p1 = cb.like(cb.lower(root.get("studentName")), search);
+				Predicate p2 = cb.like(cb.lower(root.get("email")), search);
+				Predicate p3 = cb.like(root.get("mobile"), "%" + keyword.trim() + "%");
+				Predicate p4 = cb.like(cb.lower(root.get("admissionNo")), search);
+
+				predicates.add(cb.or(p1, p2, p3, p4));
+			}
+
+			// 🎯 status filter
+			if (status != null) {
+				predicates.add(cb.equal(root.get("status"), status));
+			}
+
+			// 🎯 gender filter
+			if (gender != null && !gender.trim().isEmpty()) {
+				predicates.add(cb.equal(cb.lower(root.get("gender")), gender.trim().toLowerCase()));
+			}
+
+			// 🎯 category filter (relation)
+			if (categoryId != null) {
+				predicates.add(cb.equal(root.get("category").get("id"), categoryId));
+			}
+
+			return cb.and(predicates.toArray(new Predicate[0]));
+		};
+
+		Page<StudentEntity> studentPage = studentRepository.findAll(spec, pageable);
+
+		List<StudentResponseDTO> list = studentPage.getContent().stream()
+				.map(student -> modelMapper.map(student, StudentResponseDTO.class)).toList();
+
+		PageResponseDTO<StudentResponseDTO> response = new PageResponseDTO<>();
+
+		response.setContent(list);
+		response.setPage(studentPage.getNumber());
+		response.setSize(studentPage.getSize());
+		response.setTotalElements(studentPage.getTotalElements());
+		response.setTotalPages(studentPage.getTotalPages());
+		response.setLast(studentPage.isLast());
+
+		return response;
+	}
+}

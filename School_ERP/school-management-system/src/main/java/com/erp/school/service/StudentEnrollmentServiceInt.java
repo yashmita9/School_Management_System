@@ -20,4 +20,6 @@ public interface StudentEnrollmentServiceInt {
     StudentEnrollmentResponseDTO promoteStudent(StudentEnrollmentRequestDTO dto);
 
     StudentEnrollmentResponseDTO transferSection(Long enrollmentId, Long sectionId);
+
+	List<StudentEnrollmentResponseDTO> getStudentsByClassAndSection(Long classId, Long sectionId);
 }

@@ -1,0 +1,78 @@
+package com.erp.school.service.impl;
+
+import java.util.List;
+
+import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.erp.school.dto.CategoryRequestDTO;
+import com.erp.school.dto.CategoryResponseDTO;
+import com.erp.school.entity.CategoryEntity;
+import com.erp.school.repository.CategoryRepository;
+import com.erp.school.service.CategoryServiceInt;
+
+import jakarta.transaction.Transactional;
+
+@Service
+@Transactional
+public class CategoryServiceImpl implements CategoryServiceInt{
+	
+	@Autowired
+	private CategoryRepository categoryRepository;
+	
+	@Autowired
+	private ModelMapper modelMapper;
+
+
+	@Override
+	public CategoryResponseDTO create(CategoryRequestDTO dto) {
+		if (categoryRepository.existsByNameIgnoreCase(dto.getName())) {
+			throw new RuntimeException("Category name already exists");
+		}
+
+		if (categoryRepository.existsByCodeIgnoreCase(dto.getCode())) {
+			throw new RuntimeException("Category code already exists");
+		}
+
+		CategoryEntity entity = modelMapper.map(dto, CategoryEntity.class);
+
+		CategoryEntity saved = categoryRepository.save(entity);
+
+		return modelMapper.map(saved, CategoryResponseDTO.class);
+
+	}
+
+	@Override
+	public CategoryResponseDTO update(CategoryRequestDTO dto) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public CategoryResponseDTO findById(Long id) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public List<CategoryResponseDTO> findAll() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public List<CategoryResponseDTO> findAllActive() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public void delete(Long id) {
+		// TODO Auto-generated method stub
+		
+	}
+	
+	
+
+}

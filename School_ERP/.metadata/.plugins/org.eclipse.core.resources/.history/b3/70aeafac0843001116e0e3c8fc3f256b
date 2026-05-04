@@ -1,0 +1,22 @@
+package com.erp.school.service;
+
+import java.util.List;
+
+import com.erp.school.dto.CategoryRequestDTO;
+import com.erp.school.dto.CategoryResponseDTO;
+
+public interface CategoryServiceInt {
+	
+	CategoryResponseDTO create(CategoryRequestDTO dto);
+	
+	CategoryResponseDTO update(CategoryRequestDTO dto);
+	
+	CategoryResponseDTO findById(Long id);
+	
+	List<CategoryResponseDTO>  findAll();
+	
+	List<CategoryResponseDTO> findAllActive();
+	
+	void delete(Long id);
+
+}

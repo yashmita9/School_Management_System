@@ -1,0 +1,22 @@
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+import com.erp.school.common.BaseRepository;
+import com.erp.school.entity.StudentEntity;
+import com.erp.school.entityenum.StudentStatus;
+
+public interface StudentRepository extends BaseRepository<StudentEntity, Long> {
+
+    Optional<StudentEntity> findByAdmissionNo(String admissionNo);
+
+    List<StudentEntity> findByStatus(StudentStatus status);
+
+    List<StudentEntity> findByStudentNameContainingIgnoreCase(String studentName);
+
+    boolean existsByStudentNameAndDobAndIdNot(String studentName, LocalDate dob, Long id);
+
+    boolean existsByStudentNameAndDobAndMobile(String studentName, LocalDate dob, String mobile);
+
+    Optional<StudentEntity> findByEnquiryEnquiryCode(String enquiryCode);
+}

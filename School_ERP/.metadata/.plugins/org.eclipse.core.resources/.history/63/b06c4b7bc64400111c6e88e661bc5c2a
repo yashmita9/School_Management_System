@@ -1,0 +1,155 @@
+package com.erp.school.service.impl;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.modelmapper.ModelMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.erp.school.dto.StudentRequestDTO;
+import com.erp.school.dto.StudentResponseDTO;
+import com.erp.school.entity.EnquiryEntity;
+import com.erp.school.entity.StudentEntity;
+import com.erp.school.entityenum.EnquiryStatus;
+import com.erp.school.entityenum.StudentStatus;
+import com.erp.school.exception.BadRequestException;
+import com.erp.school.exception.ResourceNotFoundException;
+import com.erp.school.repository.EnquiryRepository;
+import com.erp.school.repository.StudentRepository;
+import com.erp.school.service.StudentServiceInt;
+
+import jakarta.transaction.Transactional;
+
+@Service
+@Transactional
+public class StudentServiceImpl implements StudentServiceInt {
+
+    private static final Logger logger = LoggerFactory.getLogger(StudentServiceImpl.class);
+
+    @Autowired
+    private StudentRepository studentRepository;
+
+    @Autowired
+    private EnquiryRepository enquiryRepository;
+
+    @Autowired
+    private ModelMapper modelMapper;
+
+    // ================= CREATE =================
+    @Override
+    public StudentResponseDTO createStudent(StudentRequestDTO dto) {
+
+        logger.info("Creating student: {}", dto.getStudentName());
+
+        if (studentRepository.findByAdmissionNo(dto.getAdmissionNo()).isPresent()) {
+            throw new BadRequestException("Admission number already exists");
+        }
+
+        StudentEntity student = modelMapper.map(dto, StudentEntity.class);
+        student.setStatus(StudentStatus.ACTIVE);
+
+        StudentEntity saved = studentRepository.save(student);
+
+        return modelMapper.map(saved, StudentResponseDTO.class);
+    }
+
+    // ================= GET BY ID =================
+    @Override
+    public StudentResponseDTO getStudentById(Long id) {
+
+        StudentEntity student = studentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+
+        return modelMapper.map(student, StudentResponseDTO.class);
+    }
+
+    // ================= GET ALL =================
+    @Override
+    public List<StudentResponseDTO> getAllStudents() {
+
+        return studentRepository.findAll()
+                .stream()
+                .map(student -> modelMapper.map(student, StudentResponseDTO.class))
+                .collect(Collectors.toList());
+    }
+
+    // ================= UPDATE =================
+    @Override
+    public StudentResponseDTO updateStudent(Long id, StudentRequestDTO dto) {
+
+        StudentEntity student = studentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+
+        // DTO → Entity mapping
+        modelMapper.map(dto, student);
+
+        StudentEntity updated = studentRepository.save(student);
+
+        return modelMapper.map(updated, StudentResponseDTO.class);
+    }
+
+    // ================= DELETE (SOFT) =================
+    @Override
+    public void deleteStudent(Long id) {
+
+        StudentEntity student = studentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+
+        student.setStatus(StudentStatus.INACTIVE);
+
+        studentRepository.save(student);
+    }
+
+    // ================= SEARCH =================
+    @Override
+    public List<StudentResponseDTO> searchByName(String name) {
+
+        return studentRepository.findByStudentNameContainingIgnoreCase(name)
+                .stream()
+                .map(student -> modelMapper.map(student, StudentResponseDTO.class))
+                .collect(Collectors.toList());
+    }
+
+    // ================= CONVERT ENQUIRY =================
+    @Override
+    public StudentResponseDTO convertEnquiryToStudent(String code) {
+
+        logger.info("Converting enquiry: {}", code);
+
+        EnquiryEntity enquiry = enquiryRepository.findByEnquiryCode(code)
+                .orElseThrow(() -> new ResourceNotFoundException("Enquiry not found"));
+
+        if (enquiry.getStatus() == EnquiryStatus.ADMITTED) {
+            throw new BadRequestException("Enquiry already converted");
+        }
+
+        // ⚠️ Manual mapping (important business logic)
+        StudentEntity student = new StudentEntity();
+        student.setStudentName(enquiry.getStudentName());
+        student.setMobile(enquiry.getMobile());
+        student.setEmail(enquiry.getEmail());
+
+        student.setAdmissionDate(LocalDate.now());
+        student.setStatus(StudentStatus.ACTIVE);
+        student.setAdmissionNo(generateAdmissionNo());
+
+        student.setEnquiry(enquiry);
+
+        StudentEntity saved = studentRepository.save(student);
+
+        // update enquiry
+        enquiry.setStatus(EnquiryStatus.ADMITTED);
+        enquiryRepository.save(enquiry);
+
+        return modelMapper.map(saved, StudentResponseDTO.class);
+    }
+
+    // ================= UTIL =================
+    private String generateAdmissionNo() {
+        return "ADM" + System.currentTimeMillis();
+    }
+}
